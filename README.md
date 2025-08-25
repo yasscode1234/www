@@ -2,22 +2,25 @@
 
 ![GitHub release](https://img.shields.io/github/v/release/yasscode1234/AETHERION_OS)
 ![License](https://img.shields.io/badge/License-MIT-blue)
-![GitHub stars](https://img.shields.io/github/stars/yasscode1234/AETHERION_OS?style=social)
+![GitHub stars](https://img.shields.io/github/stars/yasscode1234?style=social)
 
 Bienvenue sur le site officiel d’**AETHERION_OS** !  
-Un projet open source ambitieux pour créer un système d’exploitation moderne et éducatif.
+AETHERION_OS est un système d’exploitation expérimental open source pour **x86 et x64**.
 
 ---
 
 ## 🚀 Présentation
-AETHERION_OS est un OS expérimental pour x86, écrit en **C** et **Assembleur**.  
-Le projet permet d’explorer :
-- Bootloader multistage
-- Gestion mémoire basique
-- Interruptions
-- Mini-shell expérimental
+La version actuelle d’AETHERION_OS se concentre sur la stabilité du kernel et le support des architectures **x86 et x64**.  
 
-Nous avons pour ambition de **concurrencer ReactOS**, apprendre des systèmes comme Linux et macOS, et éventuellement aller jusqu’à un OS complet capable de rivaliser avec Windows.
+Fonctionnalités actuelles :
+- Bootloader multistage
+- Gestion mémoire
+- Interruptions de base
+- Mini-shell minimal
+
+### Versions futures
+- **Edu** : version éducative avec tutoriels et explications sur le fonctionnement interne  
+- **Pro** : version avancée avec fonctionnalités supplémentaires et compatibilité étendue  
 
 ---
 
@@ -28,7 +31,7 @@ Nous avons pour ambition de **concurrencer ReactOS**, apprendre des systèmes co
 
 ## 🖥️ Démonstrations
 ![demo](./screenshot.png)  
-*(Ajoute `screenshot.png` ou `demo.gif` dans le dépôt pour afficher le boot ou une capture d’écran)*
+*(Ajoute `screenshot.png` ou `demo.gif` dans le dépôt pour montrer le boot ou l’OS en fonctionnement)*
 
 ---
 
