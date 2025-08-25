@@ -1,4 +1,4 @@
-# 🌌 AETHERION_OS
+#  AETHERION_OS
 
 Bienvenue sur le site officiel d’AETHERION_OS !
 
