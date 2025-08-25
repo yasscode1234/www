@@ -31,7 +31,7 @@ Fonctionnalités actuelles :
 
 ## 🖥️ Démonstrations
 ![demo](./screenshot.png)  
-*(Ajoute `screenshot.png` ou `demo.gif` dans le dépôt pour montrer le boot ou l’OS en fonctionnement)*
+
 
 ---
 
