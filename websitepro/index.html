@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Atherion OS — Minimal, Modulaire, Open Source</title>
+  <meta name="description" content="Atherion OS est un système d’exploitation expérimental, minimaliste et modulaire, développé en C et assembleur. Licence GPL v2.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <div class="brand">
+        <img src="assets/logo.svg" alt="Logo Atherion OS" class="logo">
+        <span>Atherion <strong>OS</strong></span>
+      </div>
+      <nav>
+        <a href="#features">Fonctionnalités</a>
+        <a href="#download">Télécharger</a>
+        <a href="#docs">Docs</a>
+        <a href="#changelog">Changelog</a>
+        <a href="#contribute">Contribuer</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section id="hero" class="hero">
+    <div class="container">
+      <h1>Atherion OS v0.1</h1>
+      <p class="tagline">Un système d’exploitation minimaliste, modulaire et expérimental.<br>
+      Développé en <strong>C</strong> et <strong>assembleur</strong>, sous <strong>GPL v2</strong>.</p>
+      <div class="cta">
+        <a href="#download" class="btn primary">⬇ Télécharger v0.1</a>
+        <a href="https://github.com/yasscode1234/AETHERION_OS" target="_blank" class="btn secondary">⭐ Voir sur GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="section">
+    <div class="container">
+      <h2>Fonctionnalités</h2>
+      <div class="features-grid">
+        <div class="card">⚙️ <strong>Modulaire</strong><br> Architecture simple à étendre.</div>
+        <div class="card">🖥️ <strong>Affichage texte</strong><br> Léger, clair et rapide.</div>
+        <div class="card">🤖 <strong>IA intégrée</strong><br> Agent visible côté droit de l’écran.</div>
+        <div class="card">💻 <strong>QEMU</strong><br> Compatible pour tests rapides.</div>
+        <div class="card">📝 <strong>Licence libre</strong><br> GPL v2, contributions bienvenues.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section id="download" class="section alt">
+    <div class="container">
+      <h2>Télécharger</h2>
+      <p>Dernière version : <strong>v0.1 (build expérimental)</strong></p>
+      <a href="https://github.com/yasscode1234/AETHERION_OS/releases" target="_blank" class="btn primary">⬇ ISO / Build</a>
+      <p class="note">Instructions complètes dans la <a href="#docs">documentation</a>.</p>
+    </div>
+  </section>
+
+  <!-- Docs -->
+  <section id="docs" class="section">
+    <div class="container">
+      <h2>Documentation</h2>
+      <pre><code class="language-bash"># Cloner le dépôt
+git clone https://github.com/yasscode1234/AETHERION_OS.git
+cd AETHERION_OS
+
+# Compiler
+make
+
+# Lancer sous QEMU
+make run
+</code></pre>
+      <p>⚡ Nécessite <code>x86_64-elf-gcc</code> et <code>qemu-system-x86_64</code>.</p>
+    </div>
+  </section>
+
+  <!-- Changelog -->
+  <section id="changelog" class="section alt">
+    <div class="container">
+      <h2>Changelog</h2>
+      <ul>
+        <li><strong>v0.1</strong> — Première release publique<br>
+          → Bootloader minimal, affichage texte<br>
+          → Agent IA visible à droite<br>
+          → Support QEMU<br>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Contribute -->
+  <section id="contribute" class="section">
+    <div class="container">
+      <h2>Contribuer</h2>
+      <p>Atherion OS est open source (GPL v2). Toute aide est bienvenue :</p>
+      <ul>
+        <li>💻 Code (C / assembleur)</li>
+        <li>📖 Documentation</li>
+        <li>🌍 Traductions</li>
+      </ul>
+      <a href="https://github.com/yasscode1234/AETHERION_OS" target="_blank" class="btn secondary">🚀 Rejoindre sur GitHub</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p>© 2025 Atherion OS • GPL v2 • Développé avec ❤️ en open source</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
