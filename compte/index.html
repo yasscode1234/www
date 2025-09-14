@@ -16,11 +16,18 @@
         body { margin: 0; font-family: 'Orbitron'; background: var(--bg); color: #fff; overflow: hidden; }
         #scene-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; } /* 3D background */
         .container { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-shadow: 0 0 15px var(--neon); }
-        form, #dashboard { background: rgba(0,0,0,0.6); padding: 2rem; border-radius: 15px; box-shadow: 0 0 30px var(--purple); }
-        input, button { padding: 0.8rem; margin: 0.5rem; border: 2px solid var(--neon); background: transparent; color: #fff; border-radius: 8px; transition: all 0.3s; }
+        form, #dashboard { background: rgba(0,0,0,0.6); padding: 2rem; border-radius: 15px; box-shadow: 0 0 30px var(--purple); max-width: 90%; overflow-y: auto; }
+        input, button, textarea { padding: 0.8rem; margin: 0.5rem; border: 2px solid var(--neon); background: transparent; color: #fff; border-radius: 8px; transition: all 0.3s; box-sizing: border-box; }
         button:hover { box-shadow: 0 0 20px var(--neon); transform: scale(1.1); }
         video { width: 40%; border: 3px solid var(--purple); border-radius: 10px; margin: 1rem; box-shadow: 0 0 25px var(--neon); }
+        #chatMessages { height: 200px; overflow-y: scroll; background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        #connectedUsers { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; display: none; }
+        #friendsList { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
         .glow { animation: glow 2s infinite; } @keyframes glow { 50% { text-shadow: 0 0 25px var(--neon), 0 0 50px var(--purple); } }
+        .user-list { list-style: none; padding: 0; }
+        .user-list li { margin: 0.5rem 0; }
+        #mlDemos { display: flex; flex-direction: column; align-items: center; }
+        #imageUpload { margin: 1rem; }
     </style>
 </head>
 <body>
@@ -35,23 +42,68 @@
                 <button type="submit">Connexion</button>
                 <button type="button" onclick="loginAAD()">Connexion AAD (Edge)</button>
             </form>
-            <p>Bienvenue sur Aherion site connecter vous</p>
+            <p>Bienvenue sur Atherion site connectez-vous</p>
         </div>
         <div id="dashboard" style="display:none;">
-            <h1 class="glow">Bienvenue dans Atherion</h1>
-            <input type="text" id="roomId" placeholder="ID Salle Visio" required>
-            <button onclick="joinRoom()">Rejoindre Visio (WebRTC)</button>
-            <button onclick="runMLDemo()">Démo ML (WebNN - Classification Image)</button>
+            <h1 class="glow">Bienvenue dans Atherion, <span id="currentUser"></span></h1>
+            
+            <!-- Amis -->
+            <div id="friendsSection">
+                <h3>Amis</h3>
+                <input type="text" id="friendUsername" placeholder="Nom d'utilisateur ami">
+                <button onclick="addFriend()">Ajouter Ami</button>
+                <ul id="friendsList"></ul>
+            </div>
+
+            <!-- Visio Conférence -->
+            <div id="visioSection">
+                <h3>Visio Conférence</h3>
+                <input type="text" id="roomName" placeholder="Nom de la salle">
+                <input type="text" id="roomId" placeholder="ID Salle (optionnel)">
+                <button onclick="createRoom()">Créer Salle</button>
+                <button onclick="joinRoom()">Rejoindre Salle</button>
+                <div id="videoContainer" style="display:flex; flex-wrap: wrap;"></div>
+            </div>
+
+            <!-- Chat -->
+            <div id="chatSection">
+                <h3>Chat de la Salle</h3>
+                <div id="chatMessages"></div>
+                <input type="text" id="chatInput" placeholder="Message...">
+                <button onclick="sendMessage()">Envoyer</button>
+            </div>
+
+            <!-- Utilisateurs Connectés (Admin seulement) -->
+            <div id="adminSection" style="display: none;">
+                <h3>Utilisateurs Connectés</h3>
+                <ul id="connectedUsers"></ul>
+            </div>
+
+            <!-- Démo ML WebNN -->
+            <div id="mlSection">
+                <h3>Démo ML (WebNN)</h3>
+                <input type="file" id="imageUpload" accept="image/*">
+                <button onclick="runMLDemo()">Classifier Image</button>
+                <div id="mlResult" class="glow"></div>
+            </div>
+
             <button onclick="checkIP()">Vérifier IP Protégée</button>
-            <div id="videoContainer" style="display:flex;"></div>
-            <div id="mlResult" class="glow"></div>
             <p>IP: <span id="ipDisplay"></span></p>
         </div>
     </div>
 
-    <script src="imagenetClasses.js"></script> <!-- Ajoute: const IMAGENET_CLASSES = {...}; -->
+    <script src="imagenetClasses.js"></script> <!-- const IMAGENET_CLASSES = [...]; Assurez-vous que ce fichier existe -->
 
     <script>
+        let currentUser = '';
+        let isAdmin = false;
+        let socket;
+        let pc;
+        let localStream;
+        let remoteVideos = {};
+        let friends = JSON.parse(localStorage.getItem('friends') || '[]');
+        let currentRoom = '';
+
         // 3D Particles Futuristes (Three.js)
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -66,35 +118,88 @@
         const particles = new THREE.Points(geometry, material);
         scene.add(particles);
         camera.position.z = 1000;
-        function animate() { requestAnimationFrame(animate); particles.rotation.y += 0.001; renderer.render(scene, camera); }
+        function animate() { 
+            requestAnimationFrame(animate); 
+            particles.rotation.y += 0.001; 
+            renderer.render(scene, camera); 
+        }
         animate();
 
         // PWA Service Worker
-        if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW failed:', err));
+        }
 
-        // MSAL pour AAD (Edge Composer compatible)
-        const msalConfig = { auth: { clientId: 'YOUR_AZURE_CLIENT_ID' } }; // Remplace !
+        // Connexion Socket.IO
+        function initSocket() {
+            socket = io('http://localhost:3000'); // Remplacez par votre URL serveur
+
+            socket.on('connect', () => {
+                console.log('Connecté au serveur');
+                if (currentRoom) socket.emit('join', { room: currentRoom, name: currentUser });
+            });
+
+            socket.on('users', (users) => {
+                if (isAdmin) {
+                    const ul = document.getElementById('connectedUsers');
+                    ul.innerHTML = users.map(u => `<li>${u}</li>`).join('');
+                    document.getElementById('adminSection').style.display = 'block';
+                }
+            });
+
+            socket.on('message', (msg) => {
+                addMessage(msg.user, msg.text);
+            });
+
+            socket.on('user_joined', (user) => {
+                console.log(`${user} a rejoint la salle`);
+            });
+
+            socket.on('offer', async (data) => {
+                await handleOffer(data);
+            });
+
+            socket.on('answer', async (data) => {
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+            });
+
+            socket.on('ice-candidate', async (data) => {
+                await pc.addIceCandidate(new RTCIceCandidate(data));
+            });
+        }
+
+        // MSAL pour AAD
+        const msalConfig = { auth: { clientId: 'YOUR_AZURE_CLIENT_ID' } }; // Remplacez !
         const msalInstance = new msal.PublicClientApplication(msalConfig);
         async function loginAAD() {
             try {
                 const response = await msalInstance.loginPopup({ scopes: ['User.Read'] });
-                alert('Connecté via AAD: ' + response.account.name);
+                currentUser = response.account.name;
+                alert('Connecté via AAD: ' + currentUser);
                 showDashboard();
-            } catch (err) { alert('Erreur AAD: ' + err); }
+            } catch (err) { 
+                alert('Erreur AAD: ' + err); 
+            }
         }
 
-        // Web Crypto Hash
+        // Hash Password
         async function hashPassword(pass) {
             const enc = new TextEncoder();
             const key = await crypto.subtle.importKey('raw', enc.encode(pass), { name: 'PBKDF2' }, false, ['deriveBits']);
-            const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('atherion'), iterations: 100000, hash: 'SHA-256' }, key, 256);
+            const hash = await crypto.subtle.deriveBits({ 
+                name: 'PBKDF2', 
+                salt: enc.encode('atherion'), 
+                iterations: 100000, 
+                hash: 'SHA-256' 
+            }, key, 256);
             return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        // Comptes (localStorage démo ; use DB en prod)
+        // Comptes
         async function createAccount() {
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
+            if (!user || !pass) return alert('Champs requis');
             const hashed = await hashPassword(pass);
             localStorage.setItem(user, hashed);
             alert('Compte créé');
@@ -104,93 +209,240 @@
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
+            if (!user || !pass) return alert('Champs requis');
             const stored = localStorage.getItem(user);
             const hashed = await hashPassword(pass);
             const adminHash = await hashPassword('YASSINEa1!');
-            if (stored && stored === hashed || (user === 'yasscode' && hashed === adminHash)) showDashboard();
-            else alert('Erreur login');
+            if (stored && stored === hashed || (user === 'yasscode' && hashed === adminHash)) {
+                currentUser = user;
+                isAdmin = user === 'yasscode';
+                showDashboard();
+                initSocket();
+                loadFriends();
+            } else {
+                alert('Erreur login');
+            }
         });
 
         function showDashboard() {
             document.getElementById('login').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('currentUser').textContent = currentUser;
             // Exp JS: Async iterator
-            (async () => { for await (const v of async function*() { yield 1; yield 2; }()) console.log('Exp JS:', v); })();
+            (async () => { 
+                for await (const v of (async function*() { yield 1; yield 2; }())) {
+                    console.log('Exp JS:', v); 
+                }
+            })();
         }
 
-        // WebRTC avec Signaling
-        const socket = io('http://localhost:3000'); // Remplace par ton server URL
-        let pc, localVideo, remoteVideo;
-        const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:turnserver.example.org', username: 'user', credential: 'pass' }] }; // TURN pour mask IP
+        // Gestion Amis
+        function loadFriends() {
+            const ul = document.getElementById('friendsList');
+            ul.innerHTML = friends.map(f => `<li>${f} <button onclick="removeFriend('${f}')">Supprimer</button></li>`).join('');
+        }
 
+        function addFriend() {
+            const friend = document.getElementById('friendUsername').value;
+            if (friend && !friends.includes(friend)) {
+                friends.push(friend);
+                localStorage.setItem('friends', JSON.stringify(friends));
+                loadFriends();
+                document.getElementById('friendUsername').value = '';
+            }
+        }
+
+        function removeFriend(friend) {
+            friends = friends.filter(f => f !== friend);
+            localStorage.setItem('friends', JSON.stringify(friends));
+            loadFriends();
+        }
+
+        // WebRTC Config
+        const config = { 
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] 
+            // Ajoutez TURN si nécessaire: , { urls: 'turn:turnserver.example.org', username: 'user', credential: 'pass' }
+        };
+
+        // Créer Salle
+        async function createRoom() {
+            const name = document.getElementById('roomName').value || 'Salle Anonyme';
+            currentRoom = name + '_' + Date.now(); // ID unique
+            document.getElementById('roomId').value = currentRoom;
+            socket.emit('create', { room: currentRoom, name: currentUser });
+            joinRoomInternal(currentRoom);
+            alert(`Salle créée: ${currentRoom}. Partagez l'ID.`);
+        }
+
+        // Rejoindre Salle
         async function joinRoom() {
             const roomId = document.getElementById('roomId').value;
-            socket.emit('join', { room: roomId, name: 'User' });
-
-            localVideo = document.createElement('video'); localVideo.autoplay = true; localVideo.muted = true;
-            remoteVideo = document.createElement('video'); remoteVideo.autoplay = true;
-            document.getElementById('videoContainer').append(localVideo, remoteVideo);
-
-            pc = new RTCPeerConnection(config);
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            localVideo.srcObject = stream;
-            stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
-            pc.onicecandidate = e => { if (e.candidate) socket.emit('candidate', e.candidate); };
-            pc.ontrack = e => remoteVideo.srcObject = e.streams[0];
-
-            socket.on('room_users', users => createOffer()); // Pour simplifier, assume 1:1
-            socket.on('getOffer', sdp => createAnswer(sdp));
-            socket.on('getAnswer', sdp => pc.setRemoteDescription(sdp));
-            socket.on('getCandidate', candidate => pc.addIceCandidate(candidate));
+            if (!roomId) return alert('Entrez un ID de salle');
+            currentRoom = roomId;
+            socket.emit('join', { room: roomId, name: currentUser });
+            joinRoomInternal(roomId);
         }
 
-        async function createOffer() {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            socket.emit('offer', pc.localDescription);
+        async function joinRoomInternal(roomId) {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                const localVideo = document.createElement('video');
+                localVideo.autoplay = true;
+                localVideo.muted = true;
+                localVideo.id = 'localVideo';
+                document.getElementById('videoContainer').appendChild(localVideo);
+                localVideo.srcObject = localStream;
+
+                pc = new RTCPeerConnection(config);
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+                pc.onicecandidate = e => { 
+                    if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, room: roomId }); 
+                };
+
+                pc.ontrack = e => {
+                    const remoteVideo = document.createElement('video');
+                    remoteVideo.autoplay = true;
+                    remoteVideo.id = e.track.sender.transport.id || 'remote';
+                    document.getElementById('videoContainer').appendChild(remoteVideo);
+                    remoteVideo.srcObject = e.streams[0];
+                };
+
+                // Créer offre si créateur
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                socket.emit('offer', { sdp: pc.localDescription, room: roomId });
+
+            } catch (err) {
+                alert('Erreur media: ' + err);
+            }
         }
 
-        async function createAnswer(sdp) {
-            await pc.setRemoteDescription(sdp);
+        async function handleOffer(data) {
+            if (!pc) return;
+            await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            socket.emit('answer', pc.localDescription);
+            socket.emit('answer', { sdp: pc.localDescription, room: data.room });
         }
 
-        // WebNN Démo: Classification Image (adapte pour sentiment avec texte input)
-        async function runMLDemo() {
+        // Chat
+        function sendMessage() {
+            const msg = document.getElementById('chatInput').value;
+            if (msg && currentRoom) {
+                socket.emit('message', { text: msg, room: currentRoom, user: currentUser });
+                document.getElementById('chatInput').value = '';
+            }
+        }
+
+        function addMessage(user, text) {
+            const div = document.getElementById('chatMessages');
+            div.innerHTML += `<p><strong>${user}:</strong> ${text}</p>`;
+            div.scrollTop = div.scrollHeight;
+        }
+
+        // WebNN Démo Améliorée avec Fallback
+        let session = null;
+        async function initMLSession() {
+            if (session) return session;
             try {
-                const session = await ort.InferenceSession.create('./squeezenet1_1.onnx', { executionProviders: ['webnn'] }); // WebNN backend
-                const imageTensor = await getImageTensorFromPath('./image.jpg'); // Remplace par ton image
+                // Essayer WebNN d'abord
+                session = await ort.InferenceSession.create('./squeezenet1_1.onnx', { executionProviders: ['webnn'] });
+                console.log('WebNN chargé');
+            } catch (e) {
+                console.warn('WebNN échoué, fallback WebGL:', e);
+                try {
+                    session = await ort.InferenceSession.create('./squeezenet1_1.onnx', { executionProviders: ['webgl'] });
+                    console.log('WebGL chargé');
+                } catch (e2) {
+                    console.warn('WebGL échoué, fallback WASM:', e2);
+                    session = await ort.InferenceSession.create('./squeezenet1_1.onnx', { executionProviders: ['wasm'] });
+                    console.log('WASM chargé');
+                }
+            }
+            return session;
+        }
+
+        async function runMLDemo() {
+            const fileInput = document.getElementById('imageUpload');
+            if (!fileInput.files[0]) {
+                alert('Sélectionnez une image');
+                return;
+            }
+
+            try {
+                session = await initMLSession();
+                const file = fileInput.files[0];
+                const imageTensor = await getImageTensorFromFile(file);
                 const feeds = { input: imageTensor };
                 const results = await session.run(feeds);
-                const predictions = results.output.data; // Processus pour top prediction
-                const top = Array.from(predictions).map((p, i) => ({ prob: p, class: IMAGENET_CLASSES[i] })).sort((a,b) => b.prob - a.prob)[0];
-                document.getElementById('mlResult').innerHTML = `Classification: ${top.class} (Prob: ${top.prob.toFixed(2)})`;
-            } catch (e) { alert('Erreur WebNN: ' + e); }
-        }
-
-        async function getImageTensorFromPath(path, width=224, height=224) {
-            const image = await Jimp.read(path).then(img => img.resize(width, height));
-            const data = image.bitmap.data;
-            const pixelCount = width * height;
-            const float32Data = new Float32Array(3 * pixelCount);
-            for (let i = 0; i < pixelCount; i++) {
-                float32Data[pixelCount * 0 + i] = data[i * 4 + 0] / 255;
-                float32Data[pixelCount * 1 + i] = data[i * 4 + 1] / 255;
-                float32Data[pixelCount * 2 + i] = data[i * 4 + 2] / 255;
+                const predictions = results.output.data;
+                if (!IMAGENET_CLASSES) {
+                    alert('IMAGENET_CLASSES non chargé. Vérifiez imagenetClasses.js');
+                    return;
+                }
+                const top = Array.from(predictions)
+                    .map((p, i) => ({ prob: p, class: IMAGENET_CLASSES[i] || `Classe ${i}` }))
+                    .sort((a, b) => b.prob - a.prob)
+                    .slice(0, 5); // Top 5
+                document.getElementById('mlResult').innerHTML = top.map(t => `<div>${t.class}: ${(t.prob * 100).toFixed(2)}%</div>`).join('');
+            } catch (e) { 
+                alert('Erreur WebNN/ML: ' + e.message); 
+                console.error(e);
             }
-            return new ort.Tensor('float32', float32Data, [1, 3, height, width]);
         }
 
-        // IP Check (basique ; masqué via TURN en WebRTC)
-        async function checkIP() {
-            const res = await fetch('https://api.ipify.org?format=json');
-            const { ip } = await res.json();
-            document.getElementById('ipDisplay').textContent = ip + ' (Masqué en Visio via TURN)';
+        async function getImageTensorFromFile(file, width=224, height=224) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    Jimp.read(URL.createObjectURL(file)).then(imgJimp => {
+                        imgJimp.resize(width, height).getBuffer(Jimp.MIME_PNG, (err, buffer) => {
+                            if (err) reject(err);
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const imageData = ctx.getImageData(0, 0, width, height);
+                            const data = imageData.data;
+                            const pixelCount = width * height;
+                            const float32Data = new Float32Array(3 * pixelCount);
+                            for (let i = 0; i < pixelCount; i++) {
+                                float32Data[i] = data[i * 4 + 0] / 255; // R
+                                float32Data[pixelCount + i] = data[i * 4 + 1] / 255; // G
+                                float32Data[2 * pixelCount + i] = data[i * 4 + 2] / 255; // B
+                            }
+                            resolve(new ort.Tensor('float32', float32Data, [1, 3, height, width]));
+                        });
+                    }).catch(reject);
+                };
+                img.src = URL.createObjectURL(file);
+            });
         }
+
+        // IP Check
+        async function checkIP() {
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const { ip } = await res.json();
+                document.getElementById('ipDisplay').textContent = ip + ' (Masqué en Visio via STUN/TURN)';
+            } catch (e) {
+                document.getElementById('ipDisplay').textContent = 'Erreur IP';
+            }
+        }
+
+        // Écouteur pour chat Enter
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Redimensionner renderer
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
-
 </html>
