@@ -1,0 +1,16 @@
+{
+    "name": "Atherion OS Portal",
+    "short_name": "Atherion",
+    "description": "OS Futuriste avec ML et Visio",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#000428",
+    "theme_color": "#00ffff",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        }
+    ]
+}
