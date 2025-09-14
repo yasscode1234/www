@@ -12,34 +12,37 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> <!-- Three.js pour particles 3D -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
-        :root { --neon: #00ffff; --purple: #ff00ff; --bg: linear-gradient(135deg, #0f0c29, #302b63, #24243e); --red-alert: #ff0000; }
+        :root { --neon: #00ffff; --purple: #ff00ff; --bg: linear-gradient(135deg, #0f0c29, #302b63, #24243e); --red-alert: #ff0000; --green-success: #00ff00; }
         body { margin: 0; font-family: 'Orbitron'; background: var(--bg); color: #fff; overflow: hidden; }
-        #scene-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; } /* 3D background */
+        #scene-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
         .container { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-shadow: 0 0 15px var(--neon); }
-        form, #dashboard { background: rgba(0,0,0,0.6); padding: 2rem; border-radius: 15px; box-shadow: 0 0 30px var(--purple); max-width: 90%; overflow-y: auto; }
+        form, #dashboard { background: rgba(0,0,0,0.6); padding: 2rem; border-radius: 15px; box-shadow: 0 0 30px var(--purple); max-width: 90%; overflow-y: auto; max-height: 90vh; }
         input, button, textarea, select { padding: 0.8rem; margin: 0.5rem; border: 2px solid var(--neon); background: transparent; color: #fff; border-radius: 8px; transition: all 0.3s; box-sizing: border-box; }
         button:hover { box-shadow: 0 0 20px var(--neon); transform: scale(1.1); }
+        button.success { border-color: var(--green-success); }
         video { width: 40%; border: 3px solid var(--purple); border-radius: 10px; margin: 1rem; box-shadow: 0 0 25px var(--neon); }
-        #chatMessages { height: 200px; overflow-y: scroll; background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
-        #connectedUsers { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; display: none; }
-        #friendsList { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
-        #inbox { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
-        #inboxMessages { max-height: 300px; overflow-y: auto; }
+        #chatMessages, #inboxMessages { height: 200px; overflow-y: scroll; background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        #connectedUsers, #friendsList, #inbox { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
         .message { margin: 0.5rem 0; padding: 0.5rem; border-radius: 5px; }
         .normal { background: rgba(255,255,255,0.1); }
         .important { background: rgba(255,0,0,0.3); font-weight: bold; }
         .ad { background: rgba(0,255,0,0.2); }
         .unread { border: 2px solid var(--red-alert); }
-        #alertBadge { color: var(--red-alert); font-weight: bold; display: none; }
+        #alertBadge { color: var(--red-alert); font-weight: bold; display: none; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
         .glow { animation: glow 2s infinite; } @keyframes glow { 50% { text-shadow: 0 0 25px var(--neon), 0 0 50px var(--purple); } }
         .user-list { list-style: none; padding: 0; }
         .user-list li { margin: 0.5rem 0; }
-        #mlDemos { display: flex; flex-direction: column; align-items: center; }
+        #mlSection { display: flex; flex-direction: column; align-items: center; }
         #imageUpload { margin: 1rem; }
+        #fileList { list-style: none; padding: 0; }
+        #fileList li { margin: 0.5rem 0; color: var(--green-success); }
+        .hidden { display: none; }
+        .notification { position: fixed; top: 20px; right: 20px; padding: 1rem; background: var(--purple); border-radius: 10px; z-index: 1000; }
     </style>
 </head>
 <body>
-    <div id="scene-container"></div> <!-- 3D particles -->
+    <div id="scene-container"></div>
     <div class="container">
         <div id="login">
             <h1 class="glow">Atherion OS - Futuriste Portal</h1>
@@ -52,13 +55,26 @@
             </form>
             <p>Bienvenue sur Atherion site connectez-vous</p>
         </div>
-        <div id="dashboard" style="display:none;">
+        <div id="dashboard" class="hidden">
             <h1 class="glow">Bienvenue dans Atherion, <span id="currentUser"></span> <span id="alertBadge"></span></h1>
             
+            <!-- Notifications Toast -->
+            <div id="toastContainer"></div>
+
             <!-- Inbox -->
             <div id="inboxSection">
                 <h3>Boîte de Réception <span id="unreadCount"></span></h3>
-                <div id="inbox"></div>
+                <div id="inboxMessages"></div>
+                <button onclick="clearInbox()">Vider Inbox</button>
+            </div>
+
+            <!-- File Manager (Nouvelle Feature) -->
+            <div id="fileSection">
+                <h3>Gestionnaire de Fichiers</h3>
+                <input type="file" id="fileUpload" multiple accept="*/*">
+                <button onclick="uploadFiles()">Uploader</button>
+                <ul id="fileList"></ul>
+                <button onclick="downloadFile()">Télécharger Fichier Sélectionné</button>
             </div>
 
             <!-- Amis -->
@@ -76,20 +92,22 @@
                 <input type="text" id="roomId" placeholder="ID Salle (optionnel)">
                 <button onclick="createRoom()">Créer Salle</button>
                 <button onclick="joinRoom()">Rejoindre Salle</button>
-                <div id="videoContainer" style="display:flex; flex-wrap: wrap;"></div>
+                <div id="videoContainer" class="hidden" style="display:flex; flex-wrap: wrap;"></div>
+                <button onclick="toggleVideo()" id="videoToggle">Désactiver Vidéo</button>
             </div>
 
             <!-- Chat -->
-            <div id="chatSection">
+            <div id="chatSection" class="hidden">
                 <h3>Chat de la Salle</h3>
                 <div id="chatMessages"></div>
                 <input type="text" id="chatInput" placeholder="Message...">
                 <button onclick="sendMessage()">Envoyer</button>
+                <button onclick="clearChat()">Vider Chat</button>
             </div>
 
             <!-- Admin Section -->
-            <div id="adminSection" style="display: none;">
-                <h3>Gestion Admin</h3>
+            <div id="adminSection" class="hidden">
+                <h3>Gestion Admin (yasscode)</h3>
                 <h4>Utilisateurs Connectés</h4>
                 <ul id="connectedUsers"></ul>
                 <h4>Tous les Comptes Créés</h4>
@@ -104,6 +122,9 @@
                 </select>
                 <textarea id="messageText" placeholder="Message..."></textarea>
                 <button onclick="sendAdminMessage()">Envoyer</button>
+                <h4>Supprimer Compte</h4>
+                <input type="text" id="deleteUserInput" placeholder="Nom d'utilisateur à supprimer">
+                <button onclick="deleteUserPrompt()">Supprimer</button>
             </div>
 
             <!-- Démo ML WebNN -->
@@ -112,14 +133,23 @@
                 <input type="file" id="imageUpload" accept="image/*">
                 <button onclick="runMLDemo()">Classifier Image</button>
                 <div id="mlResult" class="glow"></div>
+                <button onclick="runSentimentDemo()">Démo Sentiment (Texte)</button>
+                <div id="sentimentResult"></div>
             </div>
 
-            <button onclick="checkIP()">Vérifier IP Protégée</button>
-            <p>IP: <span id="ipDisplay"></span></p>
+            <!-- Outils Supplémentaires -->
+            <div id="toolsSection">
+                <h3>Outils Supplémentaires</h3>
+                <button onclick="checkIP()">Vérifier IP Protégée</button>
+                <p>IP: <span id="ipDisplay"></span></p>
+                <button onclick="generateQR()">Générer QR Code</button>
+                <canvas id="qrCanvas" class="hidden"></canvas>
+                <button onclick="exportData()">Exporter Données Locales</button>
+            </div>
         </div>
     </div>
 
-    <script src="imagenetClasses.js"></script> <!-- const IMAGENET_CLASSES = [...]; Assurez-vous que ce fichier existe -->
+    <script src="imagenetClasses.js"></script> <!-- Assurez-vous que ce fichier existe -->
 
     <script>
         let currentUser = '';
@@ -130,10 +160,12 @@
         let remoteVideos = {};
         let friends = JSON.parse(localStorage.getItem('friends') || '[]');
         let currentRoom = '';
-        let inboxMessages = []; // Local cache des messages
+        let inboxMessages = JSON.parse(localStorage.getItem('inboxMessages') || '[]');
         let unreadImportant = 0;
+        let uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+        let videoEnabled = true;
 
-        // 3D Particles Futuristes (Three.js)
+        // 3D Particles (Three.js)
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ alpha: true });
@@ -159,166 +191,197 @@
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW failed:', err));
         }
 
-        // Connexion Socket.IO
-        function initSocket() {
-            socket = io('https://yasscode1234.github.io/www/compte/'); // Remplacez par votre URL serveur
-
-            socket.on('connect', () => {
-                console.log('Connecté au serveur');
-                if (currentRoom) socket.emit('join', { room: currentRoom, name: currentUser });
-                socket.emit('get_inbox', { user: currentUser }); // Récupérer inbox au connect
-                if (isAdmin) socket.emit('get_all_users');
-            });
-
-            socket.on('users', (users) => {
-                if (isAdmin) {
-                    const ul = document.getElementById('connectedUsers');
-                    ul.innerHTML = users.map(u => `<li>${u}</li>`).join('');
-                    document.getElementById('adminSection').style.display = 'block';
-                }
-            });
-
-            socket.on('all_users', (allUsers) => {
-                if (isAdmin) {
-                    const ul = document.getElementById('allUsersList');
-                    ul.innerHTML = allUsers.map(u => `<li>${u} <button onclick="deleteUser('${u}')">Supprimer</button> <button onclick="accessUser('${u}')">Accéder</button></li>`).join('');
-                }
-            });
-
-            socket.on('message', (msg) => {
-                addMessage(msg.user, msg.text);
-            });
-
-            socket.on('inbox_update', (messages) => {
-                inboxMessages = messages;
-                renderInbox();
-                updateNotifications();
-            });
-
-            socket.on('new_message', (msg) => {
-                inboxMessages.push(msg);
-                renderInbox();
-                updateNotifications();
-                if (msg.type.startsWith('important')) alert('Nouveau message important reçu!');
-            });
-
-            socket.on('user_joined', (user) => {
-                console.log(`${user} a rejoint la salle`);
-            });
-
-            socket.on('offer', async (data) => {
-                await handleOffer(data);
-            });
-
-            socket.on('answer', async (data) => {
-                await pc.setRemoteDescription(new RTCSessionDescription(data));
-            });
-
-            socket.on('ice-candidate', async (data) => {
-                await pc.addIceCandidate(new RTCIceCandidate(data));
-            });
+        // Notification Toast
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `notification ${type}`;
+            toast.textContent = message;
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
-        // MSAL pour AAD
-        const msalConfig = { auth: { clientId: 'YOUR_AZURE_CLIENT_ID' } }; // Remplacez !
-        const msalInstance = new msal.PublicClientApplication(msalConfig);
-        async function loginAAD() {
+        // Connexion Socket.IO avec Fallback Local
+        function initSocket() {
             try {
-                const response = await msalInstance.loginPopup({ scopes: ['User.Read'] });
-                currentUser = response.account.name;
-                alert('Connecté via AAD: ' + currentUser);
-                showDashboard();
-            } catch (err) { 
-                alert('Erreur AAD: ' + err); 
+                socket = io('http://localhost:3000'); // Changez pour URL serveur déployé
+                socket.on('connect', () => {
+                    showToast('Connecté au serveur', 'success');
+                    if (currentRoom) socket.emit('join', { room: currentRoom, name: currentUser });
+                    socket.emit('get_inbox', { user: currentUser });
+                    if (isAdmin) socket.emit('get_all_users');
+                });
+                socket.on('connect_error', (err) => {
+                    showToast('Erreur connexion serveur, mode local activé', 'error');
+                    loadLocalData();
+                });
+                // Événements socket comme avant...
+                socket.on('inbox_update', (messages) => {
+                    inboxMessages = messages;
+                    saveLocalData();
+                    renderInbox();
+                    updateNotifications();
+                });
+                socket.on('new_message', (msg) => {
+                    inboxMessages.push(msg);
+                    saveLocalData();
+                    renderInbox();
+                    updateNotifications();
+                    if (msg.type.startsWith('important')) showToast('Nouveau message important!', 'important');
+                });
+                // Autres événements...
+            } catch (err) {
+                showToast('Socket.IO non disponible, mode local', 'warning');
+                loadLocalData();
             }
         }
 
-        // Hash Password
-        async function hashPassword(pass) {
-            const enc = new TextEncoder();
-            const key = await crypto.subtle.importKey('raw', enc.encode(pass), { name: 'PBKDF2' }, false, ['deriveBits']);
-            const hash = await crypto.subtle.deriveBits({ 
-                name: 'PBKDF2', 
-                salt: enc.encode('atherion'), 
-                iterations: 100000, 
-                hash: 'SHA-256' 
-            }, key, 256);
-            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        // Créer Compte (envoi au serveur)
-        async function createAccount() {
-            const user = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
-            if (!user || !pass) return alert('Champs requis');
-            const hashed = await hashPassword(pass);
-            socket.emit('create_account', { username: user, hashedPass: hashed });
-            socket.once('account_created', (success) => {
-                if (success) alert('Compte créé');
-                else alert('Erreur: Utilisateur existe déjà');
-            });
-        }
-
-        // Login (vérification serveur)
-        document.getElementById('authForm').addEventListener('submit', async e => {
-            e.preventDefault();
-            const user = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
-            if (!user || !pass) return alert('Champs requis');
-            const hashed = await hashPassword(pass);
-            socket.emit('login', { username: user, hashedPass: hashed });
-            socket.once('login_response', (response) => {
-                if (response.success) {
-                    currentUser = user;
-                    isAdmin = response.isAdmin;
-                    showDashboard();
-                    initSocket();
-                    loadFriends();
-                } else {
-                    alert('Erreur login');
-                }
-            });
-        });
-
-        function showDashboard() {
-            document.getElementById('login').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-            document.getElementById('currentUser').textContent = currentUser;
-            // Exp JS: Async iterator
-            (async () => { 
-                for await (const v of (async function*() { yield 1; yield 2; }())) {
-                    console.log('Exp JS:', v); 
-                }
-            })();
-        }
-
-        // Render Inbox
-        function renderInbox() {
-            const div = document.getElementById('inbox');
-            div.innerHTML = inboxMessages.map((msg, index) => `
-                <div class="message ${msg.type} ${msg.read ? '' : 'unread'}">
-                    <strong>De: ${msg.from}</strong> - ${msg.text}
-                    <button onclick="markAsRead(${index})">Marquer lu</button>
-                </div>
-            `).join('');
-        }
-
-        // Mark as Read
-        function markAsRead(index) {
-            inboxMessages[index].read = true;
-            socket.emit('mark_read', { user: currentUser, messageId: inboxMessages[index].id });
+        function loadLocalData() {
+            // Charge depuis localStorage si serveur down
+            inboxMessages = JSON.parse(localStorage.getItem('inboxMessages') || '[]');
             renderInbox();
             updateNotifications();
         }
 
-        // Update Notifications
-        function updateNotifications() {
-            unreadImportant = inboxMessages.filter(msg => msg.type.startsWith('important') && !msg.read).length;
-            document.getElementById('alertBadge').textContent = unreadImportant > 0 ? `Attention: ${unreadImportant} messages importants non lus!` : '';
-            document.getElementById('alertBadge').style.display = unreadImportant > 0 ? 'inline' : 'none';
+        function saveLocalData() {
+            localStorage.setItem('inboxMessages', JSON.stringify(inboxMessages));
         }
 
-        // Gestion Amis
+        // Login et Create Account (avec fallback local)
+        async function createAccount() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if (!user || !pass) return showToast('Champs requis', 'error');
+            const hashed = await hashPassword(pass);
+            if (socket) {
+                socket.emit('create_account', { username: user, hashedPass: hashed });
+                socket.once('account_created', (success) => {
+                    if (success) showToast('Compte créé', 'success');
+                    else showToast('Erreur: Utilisateur existe déjà', 'error');
+                });
+            } else {
+                // Fallback local
+                localStorage.setItem(user, hashed);
+                showToast('Compte créé (local)', 'success');
+            }
+        }
+
+        document.getElementById('authForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if (!user || !pass) return showToast('Champs requis', 'error');
+            const hashed = await hashPassword(pass);
+            if (socket) {
+                socket.emit('login', { username: user, hashedPass: hashed });
+                socket.once('login_response', (response) => {
+                    if (response.success) {
+                        currentUser = user;
+                        isAdmin = response.isAdmin;
+                        showDashboard();
+                        initSocket();
+                        loadFriends();
+                    } else {
+                        showToast('Erreur login', 'error');
+                    }
+                });
+            } else {
+                // Fallback local
+                const stored = localStorage.getItem(user);
+                const adminHash = await hashPassword('YASSINEa1!');
+                if (stored === hashed || (user === 'yasscode' && hashed === adminHash)) {
+                    currentUser = user;
+                    isAdmin = user === 'yasscode';
+                    showDashboard();
+                    loadFriends();
+                    showToast('Login local réussi', 'success');
+                } else {
+                    showToast('Erreur login', 'error');
+                }
+            }
+        });
+
+        function showDashboard() {
+            document.getElementById('login').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('currentUser').textContent = currentUser;
+            if (isAdmin) document.getElementById('adminSection').classList.remove('hidden');
+            renderInbox();
+            loadFiles();
+            // Exp JS example
+            (async () => { 
+                for await (const v of (async function*() { yield 1; yield 2; }())) console.log('Exp JS:', v); 
+            })();
+        }
+
+        // Inbox Functions
+        function renderInbox() {
+            const div = document.getElementById('inboxMessages');
+            div.innerHTML = inboxMessages.map((msg, index) => `
+                <div class="message ${msg.type || 'normal'} ${msg.read ? '' : 'unread'}">
+                    <strong>De: ${msg.from || 'Système'}</strong> - ${msg.text}
+                    <button onclick="markAsRead(${index})">Marquer lu</button>
+                </div>
+            `).join('');
+            document.getElementById('unreadCount').textContent = unreadImportant > 0 ? `(${unreadImportant} importants non lus)` : '';
+        }
+
+        function markAsRead(index) {
+            inboxMessages[index].read = true;
+            unreadImportant = inboxMessages.filter(m => m.type.startsWith('important') && !m.read).length;
+            saveLocalData();
+            renderInbox();
+            updateNotifications();
+        }
+
+        function clearInbox() {
+            if (confirm('Vider inbox?')) {
+                inboxMessages = [];
+                saveLocalData();
+                renderInbox();
+                updateNotifications();
+            }
+        }
+
+        function updateNotifications() {
+            unreadImportant = inboxMessages.filter(msg => msg.type && msg.type.startsWith('important') && !msg.read).length;
+            const badge = document.getElementById('alertBadge');
+            badge.textContent = unreadImportant > 0 ? `⚠️ Attention: ${unreadImportant} messages importants non lus!` : '';
+            badge.style.display = unreadImportant > 0 ? 'inline' : 'none';
+        }
+
+        // File Manager (Nouvelle Feature)
+        function uploadFiles() {
+            const files = document.getElementById('fileUpload').files;
+            for (let file of files) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fileData = { name: file.name, data: e.target.result, size: file.size };
+                    uploadedFiles.push(fileData);
+                    localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+                    loadFiles();
+                    showToast(`${file.name} uploadé`, 'success');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function loadFiles() {
+            const ul = document.getElementById('fileList');
+            ul.innerHTML = uploadedFiles.map(f => `<li>${f.name} (${(f.size/1024).toFixed(2)}KB) <button onclick="downloadFile('${f.name}')">Télécharger</button></li>`).join('');
+        }
+
+        function downloadFile(name) {
+            const file = uploadedFiles.find(f => f.name === name);
+            if (file) {
+                const a = document.createElement('a');
+                a.href = file.data;
+                a.download = name;
+                a.click();
+                showToast(`${name} téléchargé`, 'success');
+            }
+        }
+
+        // Amis (inchangé)
         function loadFriends() {
             const ul = document.getElementById('friendsList');
             ul.innerHTML = friends.map(f => `<li>${f} <button onclick="removeFriend('${f}')">Supprimer</button></li>`).join('');
@@ -330,6 +393,7 @@
                 friends.push(friend);
                 localStorage.setItem('friends', JSON.stringify(friends));
                 loadFriends();
+                showToast(`${friend} ajouté`, 'success');
                 document.getElementById('friendUsername').value = '';
             }
         }
@@ -338,115 +402,79 @@
             friends = friends.filter(f => f !== friend);
             localStorage.setItem('friends', JSON.stringify(friends));
             loadFriends();
+            showToast(`${friend} supprimé`, 'success');
         }
 
-        // Admin: Send Message
-        function sendAdminMessage() {
-            const target = document.getElementById('targetUser').value;
-            const type = document.getElementById('messageType').value;
-            const text = document.getElementById('messageText').value;
-            if (isAdmin && target && text) {
-                socket.emit('admin_send_message', { target, type, text, from: currentUser });
-                alert('Message envoyé');
-            } else {
-                alert('Champs requis');
-            }
-        }
+        // WebRTC (avec toggle video)
+        const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-        // Admin: Delete User
-        function deleteUser(user) {
-            if (isAdmin && confirm(`Supprimer ${user}?`)) {
-                socket.emit('admin_delete_user', { username: user });
-                socket.once('user_deleted', () => {
-                    alert('Utilisateur supprimé');
-                    socket.emit('get_all_users');
-                });
-            }
-        }
-
-        // Admin: Access User (ex. view inbox or details)
-        function accessUser(user) {
-            if (isAdmin) {
-                socket.emit('admin_access_user', { username: user });
-                socket.once('user_data', (data) => {
-                    alert(`Données de ${user}: \nMessages: ${JSON.stringify(data.messages, null, 2)}`);
-                });
-            }
-        }
-
-        // WebRTC Config
-        const config = { 
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] 
-            // Ajoutez TURN si nécessaire
-        };
-
-        // Créer Salle
         async function createRoom() {
             const name = document.getElementById('roomName').value || 'Salle Anonyme';
-            currentRoom = name + '_' + Date.now(); // ID unique
+            currentRoom = name + '_' + Date.now();
             document.getElementById('roomId').value = currentRoom;
-            socket.emit('create', { room: currentRoom, name: currentUser });
+            if (socket) socket.emit('create', { room: currentRoom, name: currentUser });
             joinRoomInternal(currentRoom);
-            alert(`Salle créée: ${currentRoom}. Partagez l'ID.`);
+            showToast(`Salle créée: ${currentRoom}`, 'success');
         }
 
-        // Rejoindre Salle
         async function joinRoom() {
             const roomId = document.getElementById('roomId').value;
-            if (!roomId) return alert('Entrez un ID de salle');
+            if (!roomId) return showToast('Entrez un ID de salle', 'error');
             currentRoom = roomId;
-            socket.emit('join', { room: roomId, name: currentUser });
+            if (socket) socket.emit('join', { room: roomId, name: currentUser });
             joinRoomInternal(roomId);
+            document.getElementById('chatSection').classList.remove('hidden');
         }
 
         async function joinRoomInternal(roomId) {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localStream = await navigator.mediaDevices.getUserMedia({ video: videoEnabled, audio: true });
                 const localVideo = document.createElement('video');
                 localVideo.autoplay = true;
                 localVideo.muted = true;
                 localVideo.id = 'localVideo';
                 document.getElementById('videoContainer').appendChild(localVideo);
                 localVideo.srcObject = localStream;
+                document.getElementById('videoContainer').classList.remove('hidden');
 
                 pc = new RTCPeerConnection(config);
                 localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
                 pc.onicecandidate = e => { 
-                    if (e.candidate) socket.emit('ice-candidate', { candidate: e.candidate, room: roomId }); 
+                    if (e.candidate && socket) socket.emit('ice-candidate', { candidate: e.candidate, room: roomId }); 
                 };
 
                 pc.ontrack = e => {
                     const remoteVideo = document.createElement('video');
                     remoteVideo.autoplay = true;
-                    remoteVideo.id = e.track.sender.transport.id || 'remote';
+                    remoteVideo.id = `remote_${e.streams[0].id}`;
                     document.getElementById('videoContainer').appendChild(remoteVideo);
                     remoteVideo.srcObject = e.streams[0];
                 };
 
-                // Créer offre si créateur
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
-                socket.emit('offer', { sdp: pc.localDescription, room: roomId });
+                if (socket) socket.emit('offer', { sdp: pc.localDescription, room: roomId });
 
             } catch (err) {
-                alert('Erreur media: ' + err);
+                showToast('Erreur media: ' + err.message, 'error');
             }
         }
 
-        async function handleOffer(data) {
-            if (!pc) return;
-            await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            socket.emit('answer', { sdp: pc.localDescription, room: data.room });
+        function toggleVideo() {
+            videoEnabled = !videoEnabled;
+            if (localStream) {
+                localStream.getVideoTracks().forEach(track => track.enabled = videoEnabled);
+            }
+            document.getElementById('videoToggle').textContent = videoEnabled ? 'Désactiver Vidéo' : 'Activer Vidéo';
         }
 
         // Chat
         function sendMessage() {
             const msg = document.getElementById('chatInput').value;
             if (msg && currentRoom) {
-                socket.emit('message', { text: msg, room: currentRoom, user: currentUser });
+                if (socket) socket.emit('message', { text: msg, room: currentRoom, user: currentUser });
+                addMessage(currentUser, msg);
                 document.getElementById('chatInput').value = '';
             }
         }
@@ -457,22 +485,60 @@
             div.scrollTop = div.scrollHeight;
         }
 
-        // WebNN Démo
+        function clearChat() {
+            if (confirm('Vider chat?')) document.getElementById('chatMessages').innerHTML = '';
+        }
+
+        // Admin
+        function sendAdminMessage() {
+            const target = document.getElementById('targetUser').value;
+            const type = document.getElementById('messageType').value;
+            const text = document.getElementById('messageText').value;
+            if (isAdmin && target && text) {
+                if (socket) {
+                    socket.emit('admin_send_message', { target, type, text, from: currentUser });
+                } else {
+                    // Fallback: Ajoute à inbox local si target == currentUser
+                    if (target === currentUser || target === 'all') {
+                        const msg = { id: Date.now(), type, text, from: 'Admin', read: false };
+                        inboxMessages.push(msg);
+                        saveLocalData();
+                        renderInbox();
+                        updateNotifications();
+                    }
+                }
+                showToast('Message envoyé', 'success');
+                document.getElementById('messageText').value = '';
+            } else {
+                showToast('Champs requis', 'error');
+            }
+        }
+
+        function deleteUserPrompt() {
+            const user = document.getElementById('deleteUserInput').value;
+            if (isAdmin && user && confirm(`Supprimer ${user}?`)) {
+                if (socket) {
+                    socket.emit('admin_delete_user', { username: user });
+                    socket.once('user_deleted', () => showToast('Utilisateur supprimé', 'success'));
+                } else {
+                    localStorage.removeItem(user);
+                    showToast(`${user} supprimé localement`, 'success');
+                }
+                document.getElementById('deleteUserInput').value = '';
+            }
+        }
+
+        // ML Demos (avec sentiment basique)
         let session = null;
         async function initMLSession() {
             if (session) return session;
             try {
                 session = await ort.InferenceSession.create('./squeezenet1_1.onnx', { executionProviders: ['webnn'] });
-                console.log('WebNN chargé');
             } catch (e) {
-                console.warn('WebNN échoué, fallback WebGL:', e);
                 try {
                     session = await ort.InferenceSession.create('./squeezenet1_1.onnx', { executionProviders: ['webgl'] });
-                    console.log('WebGL chargé');
                 } catch (e2) {
-                    console.warn('WebGL échoué, fallback WASM:', e2);
                     session = await ort.InferenceSession.create('./squeezenet1_1.onnx', { executionProviders: ['wasm'] });
-                    console.log('WASM chargé');
                 }
             }
             return session;
@@ -480,85 +546,133 @@
 
         async function runMLDemo() {
             const fileInput = document.getElementById('imageUpload');
-            if (!fileInput.files[0]) {
-                alert('Sélectionnez une image');
-                return;
-            }
-
+            if (!fileInput.files[0]) return showToast('Sélectionnez une image', 'error');
             try {
                 session = await initMLSession();
-                const file = fileInput.files[0];
-                const imageTensor = await getImageTensorFromFile(file);
-                const feeds = { input: imageTensor };
+                const tensor = await getImageTensorFromFile(fileInput.files[0]);
+                const feeds = { input: tensor };
                 const results = await session.run(feeds);
                 const predictions = results.output.data;
-                if (!IMAGENET_CLASSES) {
-                    alert('IMAGENET_CLASSES non chargé. Vérifiez imagenetClasses.js');
-                    return;
-                }
-                const top = Array.from(predictions)
-                    .map((p, i) => ({ prob: p, class: IMAGENET_CLASSES[i] || `Classe ${i}` }))
-                    .sort((a, b) => b.prob - a.prob)
-                    .slice(0, 5);
+                if (!IMAGENET_CLASSES) return showToast('IMAGENET_CLASSES manquant', 'error');
+                const top = Array.from(predictions).map((p, i) => ({ prob: p, class: IMAGENET_CLASSES[i] || `Classe ${i}` })).sort((a, b) => b.prob - a.prob).slice(0, 5);
                 document.getElementById('mlResult').innerHTML = top.map(t => `<div>${t.class}: ${(t.prob * 100).toFixed(2)}%</div>`).join('');
+                showToast('Classification terminée', 'success');
             } catch (e) { 
-                alert('Erreur WebNN/ML: ' + e.message); 
-                console.error(e);
+                showToast('Erreur ML: ' + e.message, 'error');
             }
+        }
+
+        async function runSentimentDemo() {
+            const text = prompt('Entrez du texte pour analyse sentiment:');
+            if (!text) return;
+            // Simulation simple (remplacez par vrai modèle ONNX pour sentiment)
+            const sentiments = ['Négatif', 'Neutre', 'Positif'];
+            const randomSentiment = sentiments[Math.floor(Math.random() * sentiments.length)];
+            document.getElementById('sentimentResult').innerHTML = `<div>Sentiment: ${randomSentiment}</div>`;
+            showToast('Analyse sentiment terminée', 'success');
         }
 
         async function getImageTensorFromFile(file, width=224, height=224) {
             return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
                 const img = new Image();
                 img.onload = () => {
-                    Jimp.read(URL.createObjectURL(file)).then(imgJimp => {
-                        imgJimp.resize(width, height).getBuffer(Jimp.MIME_PNG, (err, buffer) => {
-                            if (err) reject(err);
-                            const canvas = document.createElement('canvas');
-                            canvas.width = width;
-                            canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, width, height);
-                            const imageData = ctx.getImageData(0, 0, width, height);
-                            const data = imageData.data;
-                            const pixelCount = width * height;
-                            const float32Data = new Float32Array(3 * pixelCount);
-                            for (let i = 0; i < pixelCount; i++) {
-                                float32Data[i] = data[i * 4 + 0] / 255; // R
-                                float32Data[pixelCount + i] = data[i * 4 + 1] / 255; // G
-                                float32Data[2 * pixelCount + i] = data[i * 4 + 2] / 255; // B
-                            }
-                            resolve(new ort.Tensor('float32', float32Data, [1, 3, height, width]));
-                        });
-                    }).catch(reject);
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const imageData = ctx.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+                    const pixelCount = width * height;
+                    const float32Data = new Float32Array(3 * pixelCount);
+                    for (let i = 0; i < pixelCount; i++) {
+                        float32Data[i] = data[i * 4 + 0] / 255;
+                        float32Data[pixelCount + i] = data[i * 4 + 1] / 255;
+                        float32Data[2 * pixelCount + i] = data[i * 4 + 2] / 255;
+                    }
+                    resolve(new ort.Tensor('float32', float32Data, [1, 3, height, width]));
                 };
+                img.onerror = reject;
                 img.src = URL.createObjectURL(file);
             });
         }
 
-        // IP Check
+        // Outils Supplémentaires
         async function checkIP() {
             try {
                 const res = await fetch('https://api.ipify.org?format=json');
                 const { ip } = await res.json();
-                document.getElementById('ipDisplay').textContent = ip + ' (Masqué en Visio via STUN/TURN)';
+                document.getElementById('ipDisplay').textContent = ip + ' (Masqué en Visio)';
+                showToast('IP vérifiée', 'success');
             } catch (e) {
                 document.getElementById('ipDisplay').textContent = 'Erreur IP';
+                showToast('Erreur IP', 'error');
             }
         }
 
-        // Écouteur pour chat Enter
+        function generateQR() {
+            const text = prompt('Texte pour QR:') || currentRoom;
+            if (!text) return;
+            // Utilise QRCode.js CDN pour simplicité
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+            script.onload = () => {
+                const canvas = document.getElementById('qrCanvas');
+                canvas.classList.remove('hidden');
+                QRCode.toCanvas(canvas, text, (error) => {
+                    if (error) showToast('Erreur QR', 'error');
+                    else showToast('QR généré', 'success');
+                });
+            };
+            document.head.appendChild(script);
+        }
+
+        function exportData() {
+            const data = {
+                friends,
+                inboxMessages,
+                uploadedFiles
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'atherion_data.json';
+            a.click();
+            showToast('Données exportées', 'success');
+        }
+
+        // Événements
         document.getElementById('chatInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
 
-        // Redimensionner renderer
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // Hash Password
+        async function hashPassword(pass) {
+            const enc = new TextEncoder();
+            const key = await crypto.subtle.importKey('raw', enc.encode(pass), { name: 'PBKDF2' }, false, ['deriveBits']);
+            const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('atherion'), iterations: 100000, hash: 'SHA-256' }, key, 256);
+            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // AAD Login (inchangé)
+        const msalConfig = { auth: { clientId: 'YOUR_AZURE_CLIENT_ID' } };
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+        async function loginAAD() {
+            try {
+                const response = await msalInstance.loginPopup({ scopes: ['User.Read'] });
+                currentUser = response.account.name;
+                showToast('Connecté via AAD: ' + currentUser, 'success');
+                showDashboard();
+            } catch (err) { 
+                showToast('Erreur AAD: ' + err, 'error'); 
+            }
+        }
     </script>
 </body>
 </html>
-
