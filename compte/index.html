@@ -12,17 +12,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> <!-- Three.js pour particles 3D -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
-        :root { --neon: #00ffff; --purple: #ff00ff; --bg: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
+        :root { --neon: #00ffff; --purple: #ff00ff; --bg: linear-gradient(135deg, #0f0c29, #302b63, #24243e); --red-alert: #ff0000; }
         body { margin: 0; font-family: 'Orbitron'; background: var(--bg); color: #fff; overflow: hidden; }
         #scene-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; } /* 3D background */
         .container { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-shadow: 0 0 15px var(--neon); }
         form, #dashboard { background: rgba(0,0,0,0.6); padding: 2rem; border-radius: 15px; box-shadow: 0 0 30px var(--purple); max-width: 90%; overflow-y: auto; }
-        input, button, textarea { padding: 0.8rem; margin: 0.5rem; border: 2px solid var(--neon); background: transparent; color: #fff; border-radius: 8px; transition: all 0.3s; box-sizing: border-box; }
+        input, button, textarea, select { padding: 0.8rem; margin: 0.5rem; border: 2px solid var(--neon); background: transparent; color: #fff; border-radius: 8px; transition: all 0.3s; box-sizing: border-box; }
         button:hover { box-shadow: 0 0 20px var(--neon); transform: scale(1.1); }
         video { width: 40%; border: 3px solid var(--purple); border-radius: 10px; margin: 1rem; box-shadow: 0 0 25px var(--neon); }
         #chatMessages { height: 200px; overflow-y: scroll; background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
         #connectedUsers { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; display: none; }
         #friendsList { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        #inbox { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        #inboxMessages { max-height: 300px; overflow-y: auto; }
+        .message { margin: 0.5rem 0; padding: 0.5rem; border-radius: 5px; }
+        .normal { background: rgba(255,255,255,0.1); }
+        .important { background: rgba(255,0,0,0.3); font-weight: bold; }
+        .ad { background: rgba(0,255,0,0.2); }
+        .unread { border: 2px solid var(--red-alert); }
+        #alertBadge { color: var(--red-alert); font-weight: bold; display: none; }
         .glow { animation: glow 2s infinite; } @keyframes glow { 50% { text-shadow: 0 0 25px var(--neon), 0 0 50px var(--purple); } }
         .user-list { list-style: none; padding: 0; }
         .user-list li { margin: 0.5rem 0; }
@@ -45,8 +53,14 @@
             <p>Bienvenue sur Atherion site connectez-vous</p>
         </div>
         <div id="dashboard" style="display:none;">
-            <h1 class="glow">Bienvenue dans Atherion, <span id="currentUser"></span></h1>
+            <h1 class="glow">Bienvenue dans Atherion, <span id="currentUser"></span> <span id="alertBadge"></span></h1>
             
+            <!-- Inbox -->
+            <div id="inboxSection">
+                <h3>Boîte de Réception <span id="unreadCount"></span></h3>
+                <div id="inbox"></div>
+            </div>
+
             <!-- Amis -->
             <div id="friendsSection">
                 <h3>Amis</h3>
@@ -73,10 +87,23 @@
                 <button onclick="sendMessage()">Envoyer</button>
             </div>
 
-            <!-- Utilisateurs Connectés (Admin seulement) -->
+            <!-- Admin Section -->
             <div id="adminSection" style="display: none;">
-                <h3>Utilisateurs Connectés</h3>
+                <h3>Gestion Admin</h3>
+                <h4>Utilisateurs Connectés</h4>
                 <ul id="connectedUsers"></ul>
+                <h4>Tous les Comptes Créés</h4>
+                <ul id="allUsersList"></ul>
+                <h4>Envoyer Message</h4>
+                <input type="text" id="targetUser" placeholder="Nom d'utilisateur (ou 'all' pour public)">
+                <select id="messageType">
+                    <option value="normal">Normal</option>
+                    <option value="important-private">Important Privé</option>
+                    <option value="important-public">Important Public</option>
+                    <option value="ad">Pub Atherion</option>
+                </select>
+                <textarea id="messageText" placeholder="Message..."></textarea>
+                <button onclick="sendAdminMessage()">Envoyer</button>
             </div>
 
             <!-- Démo ML WebNN -->
@@ -103,6 +130,8 @@
         let remoteVideos = {};
         let friends = JSON.parse(localStorage.getItem('friends') || '[]');
         let currentRoom = '';
+        let inboxMessages = []; // Local cache des messages
+        let unreadImportant = 0;
 
         // 3D Particles Futuristes (Three.js)
         const scene = new THREE.Scene();
@@ -137,6 +166,8 @@
             socket.on('connect', () => {
                 console.log('Connecté au serveur');
                 if (currentRoom) socket.emit('join', { room: currentRoom, name: currentUser });
+                socket.emit('get_inbox', { user: currentUser }); // Récupérer inbox au connect
+                if (isAdmin) socket.emit('get_all_users');
             });
 
             socket.on('users', (users) => {
@@ -147,8 +178,28 @@
                 }
             });
 
+            socket.on('all_users', (allUsers) => {
+                if (isAdmin) {
+                    const ul = document.getElementById('allUsersList');
+                    ul.innerHTML = allUsers.map(u => `<li>${u} <button onclick="deleteUser('${u}')">Supprimer</button> <button onclick="accessUser('${u}')">Accéder</button></li>`).join('');
+                }
+            });
+
             socket.on('message', (msg) => {
                 addMessage(msg.user, msg.text);
+            });
+
+            socket.on('inbox_update', (messages) => {
+                inboxMessages = messages;
+                renderInbox();
+                updateNotifications();
+            });
+
+            socket.on('new_message', (msg) => {
+                inboxMessages.push(msg);
+                renderInbox();
+                updateNotifications();
+                if (msg.type.startsWith('important')) alert('Nouveau message important reçu!');
             });
 
             socket.on('user_joined', (user) => {
@@ -195,33 +246,38 @@
             return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        // Comptes
+        // Créer Compte (envoi au serveur)
         async function createAccount() {
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             if (!user || !pass) return alert('Champs requis');
             const hashed = await hashPassword(pass);
-            localStorage.setItem(user, hashed);
-            alert('Compte créé');
+            socket.emit('create_account', { username: user, hashedPass: hashed });
+            socket.once('account_created', (success) => {
+                if (success) alert('Compte créé');
+                else alert('Erreur: Utilisateur existe déjà');
+            });
         }
 
+        // Login (vérification serveur)
         document.getElementById('authForm').addEventListener('submit', async e => {
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             if (!user || !pass) return alert('Champs requis');
-            const stored = localStorage.getItem(user);
             const hashed = await hashPassword(pass);
-            const adminHash = await hashPassword('YASSINEa1!');
-            if (stored && stored === hashed || (user === 'yasscode' && hashed === adminHash)) {
-                currentUser = user;
-                isAdmin = user === 'yasscode';
-                showDashboard();
-                initSocket();
-                loadFriends();
-            } else {
-                alert('Erreur login');
-            }
+            socket.emit('login', { username: user, hashedPass: hashed });
+            socket.once('login_response', (response) => {
+                if (response.success) {
+                    currentUser = user;
+                    isAdmin = response.isAdmin;
+                    showDashboard();
+                    initSocket();
+                    loadFriends();
+                } else {
+                    alert('Erreur login');
+                }
+            });
         });
 
         function showDashboard() {
@@ -234,6 +290,32 @@
                     console.log('Exp JS:', v); 
                 }
             })();
+        }
+
+        // Render Inbox
+        function renderInbox() {
+            const div = document.getElementById('inbox');
+            div.innerHTML = inboxMessages.map((msg, index) => `
+                <div class="message ${msg.type} ${msg.read ? '' : 'unread'}">
+                    <strong>De: ${msg.from}</strong> - ${msg.text}
+                    <button onclick="markAsRead(${index})">Marquer lu</button>
+                </div>
+            `).join('');
+        }
+
+        // Mark as Read
+        function markAsRead(index) {
+            inboxMessages[index].read = true;
+            socket.emit('mark_read', { user: currentUser, messageId: inboxMessages[index].id });
+            renderInbox();
+            updateNotifications();
+        }
+
+        // Update Notifications
+        function updateNotifications() {
+            unreadImportant = inboxMessages.filter(msg => msg.type.startsWith('important') && !msg.read).length;
+            document.getElementById('alertBadge').textContent = unreadImportant > 0 ? `Attention: ${unreadImportant} messages importants non lus!` : '';
+            document.getElementById('alertBadge').style.display = unreadImportant > 0 ? 'inline' : 'none';
         }
 
         // Gestion Amis
@@ -258,10 +340,44 @@
             loadFriends();
         }
 
+        // Admin: Send Message
+        function sendAdminMessage() {
+            const target = document.getElementById('targetUser').value;
+            const type = document.getElementById('messageType').value;
+            const text = document.getElementById('messageText').value;
+            if (isAdmin && target && text) {
+                socket.emit('admin_send_message', { target, type, text, from: currentUser });
+                alert('Message envoyé');
+            } else {
+                alert('Champs requis');
+            }
+        }
+
+        // Admin: Delete User
+        function deleteUser(user) {
+            if (isAdmin && confirm(`Supprimer ${user}?`)) {
+                socket.emit('admin_delete_user', { username: user });
+                socket.once('user_deleted', () => {
+                    alert('Utilisateur supprimé');
+                    socket.emit('get_all_users');
+                });
+            }
+        }
+
+        // Admin: Access User (ex. view inbox or details)
+        function accessUser(user) {
+            if (isAdmin) {
+                socket.emit('admin_access_user', { username: user });
+                socket.once('user_data', (data) => {
+                    alert(`Données de ${user}: \nMessages: ${JSON.stringify(data.messages, null, 2)}`);
+                });
+            }
+        }
+
         // WebRTC Config
         const config = { 
             iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] 
-            // Ajoutez TURN si nécessaire: , { urls: 'turn:turnserver.example.org', username: 'user', credential: 'pass' }
+            // Ajoutez TURN si nécessaire
         };
 
         // Créer Salle
@@ -341,12 +457,11 @@
             div.scrollTop = div.scrollHeight;
         }
 
-        // WebNN Démo Améliorée avec Fallback
+        // WebNN Démo
         let session = null;
         async function initMLSession() {
             if (session) return session;
             try {
-                // Essayer WebNN d'abord
                 session = await ort.InferenceSession.create('./squeezenet1_1.onnx', { executionProviders: ['webnn'] });
                 console.log('WebNN chargé');
             } catch (e) {
@@ -384,7 +499,7 @@
                 const top = Array.from(predictions)
                     .map((p, i) => ({ prob: p, class: IMAGENET_CLASSES[i] || `Classe ${i}` }))
                     .sort((a, b) => b.prob - a.prob)
-                    .slice(0, 5); // Top 5
+                    .slice(0, 5);
                 document.getElementById('mlResult').innerHTML = top.map(t => `<div>${t.class}: ${(t.prob * 100).toFixed(2)}%</div>`).join('');
             } catch (e) { 
                 alert('Erreur WebNN/ML: ' + e.message); 
