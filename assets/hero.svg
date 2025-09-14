@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1600" height="900" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <title>Atherion OS — Fond animé</title>
+  <desc>Scène spatiale animée, nébuleuses, étoiles, orbites et logo Atherion OS</desc>
+
+  <defs>
+    <!-- Palette -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#05060E"/>
+      <stop offset="50%" stop-color="#0A0F24"/>
+      <stop offset="100%" stop-color="#120B24"/>
+    </linearGradient>
+
+    <!-- Nébuleuse volumétrique -->
+    <radialGradient id="nebula1" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#4DD0E1" stop-opacity="0.55"/>
+      <stop offset="40%" stop-color="#7C4DFF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="nebula2" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#FF8A80" stop-opacity="0.45"/>
+      <stop offset="45%" stop-color="#F50057" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Étoile scintillante -->
+    <g id="star">
+      <circle r="1.2" fill="#E8F1FF"/>
+      <g opacity="0.9">
+        <rect x="-0.6" y="-3.2" width="1.2" height="6.4" rx="0.6" fill="#BBD3FF"/>
+        <rect x="-3.2" y="-0.6" width="6.4" height="1.2" rx="0.6" fill="#BBD3FF"/>
+      </g>
+    </g>
+
+    <!-- Flou doux -->
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Glow énergétique pour le logo -->
+    <filter id="energyGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="g1"/>
+      <feColorMatrix in="g1" type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 18 -8" result="g2"/>
+      <feBlend in="SourceGraphic" in2="g2" mode="screen"/>
+    </filter>
+
+    <!-- Trait lumineux -->
+    <linearGradient id="strokeGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4DD0E1"/>
+      <stop offset="50%" stop-color="#7C4DFF"/>
+      <stop offset="100%" stop-color="#F50057"/>
+    </linearGradient>
+
+    <!-- Orbe planétaire -->
+    <radialGradient id="orbGrad" cx="35%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#C3F1FF"/>
+      <stop offset="40%" stop-color="#8AE2FF"/>
+      <stop offset="100%" stop-color="#2B86B9"/>
+    </radialGradient>
+
+    <!-- Typo fallback futuriste -->
+    <style><![CDATA[
+      @font-face {
+        font-family: "Atherion-UI";
+        src: local("Eurostile"), local("Bank Gothic"), local("Orbitron"), local("Rajdhani"), local("Exo 2");
+      }
+      .title {
+        font-family: "Atherion-UI", "Orbitron", "Rajdhani", "Exo 2", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+      }
+      .subtitle {
+        font-family: "Atherion-UI", "Rajdhani", system-ui, sans-serif;
+        letter-spacing: 0.28em;
+        font-weight: 500;
+      }
+    ]]></style>
+  </defs>
+
+  <!-- Fond spatial -->
+  <rect width="1600" height="900" fill="url(#bgGrad)"/>
+
+  <!-- Nébuleuses -->
+  <g filter="url(#softGlow)">
+    <ellipse cx="520" cy="360" rx="420" ry="240" fill="url(#nebula1)">
+      <animate attributeName="rx" values="380;420;380" dur="16s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="220;240;220" dur="18s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.45;0.65;0.45" dur="14s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="1150" cy="600" rx="500" ry="280" fill="url(#nebula2)">
+      <animate attributeName="rx" values="470;500;470" dur="20s" repeatCount="indefinite"/>
+      <animate attributeName="ry" values="260;280;260" dur="22s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.35;0.5;0.35" dur="17s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- Étoiles de fond -->
+  <g id="stars">
+    <!-- Génération manuelle de quelques positions -->
+    <g transform="translate(200,120)">
+      <use xlink:href="#star">
+        <animate attributeName="opacity" values="0.4;1;0.4" dur="3.6s" repeatCount="indefinite" />
+      </use>
+    </g>
+    <g transform="translate(320,540)">
+      <use xlink:href="#star">
+        <animate attributeName="opacity" values="0.3;0.9;0.3" dur="4.2s" repeatCount="indefinite" />
+      </use>
+    </g>
+    <g transform="translate(1480,220)">
+      <use xlink:href="#star">
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="2.8s" repeatCount="indefinite" />
+      </use>
+    </g>
+    <g transform="translate(860,160)">
+      <use xlink:href="#star">
+        <animate attributeName="opacity" values="0.2;0.85;0.2" dur="5.1s" repeatCount="indefinite" />
+      </use>
+    </g>
+    <g transform="translate(620,740)">
+      <use xlink:href="#star">
+        <animate attributeName="opacity" values="0.35;1;0.35" dur="3.9s" repeatCount="indefinite" />
+      </use>
+    </g>
+    <g transform="translate(1360,760)">
+      <use xlink:href="#star">
+        <animate attributeName="opacity" values="0.25;0.8;0.25" dur="4.8s" repeatCount="indefinite" />
+      </use>
+    </g>
+    <g transform="translate(1040,430)">
+      <use xlink:href="#star">
+        <animate attributeName="opacity" values="0.4;1;0.4" dur="3.3s" repeatCount="indefinite" />
+      </use>
+    </g>
+    <g transform="translate(120,860)">
+      <use xlink:href="#star">
+        <animate attributeName="opacity" values="0.2;0.9;0.2" dur="5.4s" repeatCount="indefinite" />
+      </use>
+    </g>
+  </g>
+
+  <!-- Système orbital central -->
+  <g id="core" transform="translate(800,450)">
+    <!-- Halo pulsant -->
+    <circle r="150" fill="none" stroke="url(#strokeGrad)" stroke-width="2" opacity="0.7">
+      <animate attributeName="r" values="140;155;140" dur="6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.9;0.4" dur="6s" repeatCount="indefinite"/>
+    </circle>
+
+    <!-- Anneau principal -->
+    <ellipse rx="260" ry="110" fill="none" stroke="url(#strokeGrad)" stroke-width="1.6" opacity="0.8"
+             filter="url(#softGlow)">
+      <animateTransform attributeName="transform" type="rotate" values="0;360" dur="48s" repeatCount="indefinite"/>
+    </ellipse>
+
+    <!-- Anneau secondaire -->
+    <ellipse rx="180" ry="70" fill="none" stroke="url(#strokeGrad)" stroke-width="1.2" opacity="0.7">
+      <animateTransform attributeName="transform" type="rotate" values="360;0" dur="36s" repeatCount="indefinite"/>
+    </ellipse>
+
+    <!-- Orbes (planètes) -->
+    <g>
+      <g>
+        <circle r="12" fill="url(#orbGrad)" filter="url(#energyGlow)">
+          <animateTransform attributeName="transform" type="rotate" values="0;360" dur="18s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+      <g transform="rotate(120)">
+        <circle r="8" fill="#FFD180" filter="url(#softGlow)">
+          <animateTransform attributeName="transform" type="rotate" values="0;360" dur="12s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+      <g transform="rotate(240)">
+        <circle r="10" fill="#B388FF" filter="url(#softGlow)">
+          <animateTransform attributeName="transform" type="rotate" values="0;360" dur="22s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+    </g>
+
+    <!-- Noyau énergétique -->
+    <g filter="url(#energyGlow)">
+      <circle r="42" fill="#B2EBF2" opacity="0.95">
+        <animate attributeName="r" values="38;46;38" dur="7s" repeatCount="indefinite"/>
+      </circle>
+      <circle r="70" fill="none" stroke="#7C4DFF" stroke-width="2" opacity="0.6">
+        <animate attributeName="r" values="62;76;62" dur="10s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.3;0.8;0.3" dur="10s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+
+    <!-- Titre Atherion OS -->
+    <g transform="translate(0,180)" text-anchor="middle">
+      <text class="title" x="0" y="0" font-size="52" fill="#E6F7FF" filter="url(#energyGlow)">
+        Atherion OS
+        <animate attributeName="letter-spacing" values="0.12em;0.2em;0.12em" dur="8s" repeatCount="indefinite"/>
+      </text>
+      <text class="subtitle" x="0" y="38" font-size="16" fill="#A7C4FF" opacity="0.85">
+        SCIENTIFIC • FLUID • FUTURISTIC
+        <animate attributeName="opacity" values="0.6;0.9;0.6" dur="6s" repeatCount="indefinite"/>
+      </text>
+    </g>
+  </g>
+
+  <!-- Lignes de données (accent scientifique) -->
+  <g opacity="0.45" stroke="url(#strokeGrad)" stroke-width="0.8">
+    <path d="M80,140 C360,120 520,200 800,180" fill="none">
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="9s" repeatCount="indefinite"/>
+    </path>
+    <path d="M140,820 C480,700 1120,980 1520,760" fill="none">
+      <animate attributeName="opacity" values="0.15;0.5;0.15" dur="11s" repeatCount="indefinite"/>
+    </path>
+    <path d="M1480,120 C1200,220 1060,120 820,200" fill="none">
+      <animate attributeName="opacity" values="0.2;0.55;0.2" dur="10s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- Vague lumineuse orbitale -->
+  <g transform="translate(800,450)" opacity="0.6">
+    <circle r="240" fill="none" stroke="url(#strokeGrad)" stroke-width="1">
+      <animate attributeName="r" values="220;260;220" dur="14s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="300" fill="none" stroke="url(#strokeGrad)" stroke-width="0.8" opacity="0.5">
+      <animate attributeName="r" values="280;320;280" dur="20s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+</svg>
