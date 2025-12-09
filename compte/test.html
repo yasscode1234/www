@@ -56,7 +56,7 @@
             <p>Bienvenue sur Atherion site connectez-vous</p>
         </div>
         <div id="dashboard" class="hidden">
-            <h1 class="glow">Bienvenue dans Atherion, <span id="currentUser"></span> <span id="alertBadge"></span></h1>
+            <h1 class="glow">Bienvenue dans Atherion, <span id="currentUser"></span> <span id="alertBadge"></span> <button onclick="logout()">Déconnexion</button></h1>
            
             <!-- Notifications Toast -->
             <div id="toastContainer"></div>
@@ -72,7 +72,6 @@
                 <input type="file" id="fileUpload" multiple accept="*/*">
                 <button onclick="uploadFiles()">Uploader</button>
                 <ul id="fileList"></ul>
-                <button onclick="downloadFile()">Télécharger Fichier Sélectionné</button>
             </div>
             <!-- Amis -->
             <div id="friendsSection">
@@ -144,7 +143,7 @@
     <script>
         let currentUser = '';
         let isAdmin = false;
-        let socket;
+        let socket = io('http://localhost:3000'); // Changez pour URL serveur déployé
         let localStream;
         let remoteVideos = {};
         let peerConnections = new Map();
@@ -186,78 +185,99 @@
             document.getElementById('toastContainer').appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
-        // Connexion Socket.IO avec Fallback Local
-        function initSocket() {
-            try {
-                socket = io('http://localhost:3000'); // Changez pour URL serveur déployé
-                socket.on('connect', () => {
-                    showToast('Connecté au serveur', 'success');
-                    if (currentRoom) socket.emit('join', { room: currentRoom, name: currentUser });
-                    socket.emit('get_inbox', { user: currentUser });
-                    if (isAdmin) {
-                        socket.emit('get_all_users');
-                        socket.emit('get_connected_users');
+        socket.on('connect', () => {
+            showToast('Connecté au serveur', 'success');
+            const storedUser = localStorage.getItem('currentUser');
+            const storedHash = localStorage.getItem('hashedPass');
+            if (storedUser && storedHash) {
+                socket.emit('login', { username: storedUser, hashedPass: storedHash });
+                socket.once('login_response', (response) => {
+                    if (response.success) {
+                        currentUser = storedUser;
+                        isAdmin = response.isAdmin;
+                        localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
+                        if (currentRoom) socket.emit('join', { room: currentRoom, name: currentUser });
+                        socket.emit('get_inbox', { user: currentUser });
+                        if (isAdmin) {
+                            socket.emit('get_all_users');
+                            socket.emit('get_connected_users');
+                        }
+                        showDashboard();
+                        loadFriends();
+                    } else {
+                        localStorage.removeItem('currentUser');
+                        localStorage.removeItem('hashedPass');
+                        localStorage.removeItem('isAdmin');
+                        showToast('Session expirée, veuillez vous reconnecter', 'error');
                     }
                 });
-                socket.on('connect_error', (err) => {
-                    showToast('Erreur connexion serveur, mode local activé', 'error');
-                    loadLocalData();
-                });
-                // Événements socket
-                socket.on('inbox_update', (messages) => {
-                    inboxMessages = messages;
-                    saveLocalData();
-                    renderInbox();
-                    updateNotifications();
-                });
-                socket.on('new_message', (msg) => {
-                    inboxMessages.push(msg);
-                    saveLocalData();
-                    renderInbox();
-                    updateNotifications();
-                    if (msg.type.startsWith('important')) showToast('Nouveau message important!', 'important');
-                });
-                socket.on('message', (msg) => {
-                    addMessage(msg.user, msg.text);
-                });
-                socket.on('all_users', (users) => {
-                    document.getElementById('allUsersList').innerHTML = users.map(u => `<li>${u} <button onclick="deleteUser('${u}')">Supprimer</button></li>`).join('');
-                });
-                socket.on('connected_users', (users) => {
-                    const ul = document.getElementById('connectedUsers');
-                    ul.innerHTML = users.map(u => `<li>${u} <button onclick="deleteUser('${u}')">Supprimer</button></li>`).join('');
-                });
-                // WebRTC signaling events
-                socket.on('user-joined', async ({name}) => {
-                    if (name === currentUser) return;
-                    const pc = createPeerConnection(name);
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    socket.emit('offer', { sdp: pc.localDescription, to: name, from: currentUser, room: currentRoom });
-                });
-                socket.on('offer', async (data) => {
-                    if (data.to !== currentUser || data.room !== currentRoom) return;
-                    const pc = createPeerConnection(data.from);
-                    await pc.setRemoteDescription(data.sdp);
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    socket.emit('answer', { sdp: pc.localDescription, to: data.from, from: currentUser, room: currentRoom });
-                });
-                socket.on('answer', async (data) => {
-                    if (data.to !== currentUser || data.room !== currentRoom) return;
-                    const pc = peerConnections.get(data.from);
-                    if (pc) await pc.setRemoteDescription(data.sdp);
-                });
-                socket.on('ice-candidate', (data) => {
-                    if (data.to !== currentUser || data.room !== currentRoom) return;
-                    const pc = peerConnections.get(data.from);
-                    if (pc) pc.addIceCandidate(data.candidate);
-                });
-            } catch (err) {
-                showToast('Socket.IO non disponible, mode local', 'warning');
-                loadLocalData();
             }
-        }
+        });
+        socket.on('connect_error', (err) => {
+            showToast('Erreur connexion serveur, mode local activé', 'error');
+            loadLocalData();
+        });
+        // Événements socket
+        socket.on('inbox_update', (messages) => {
+            inboxMessages = messages;
+            saveLocalData();
+            renderInbox();
+            updateNotifications();
+        });
+        socket.on('new_message', (msg) => {
+            inboxMessages.push(msg);
+            saveLocalData();
+            renderInbox();
+            updateNotifications();
+            if (msg.type.startsWith('important')) showToast('Nouveau message important!', 'important');
+        });
+        socket.on('message', (msg) => {
+            addMessage(msg.user, msg.text);
+        });
+        socket.on('all_users', (users) => {
+            document.getElementById('allUsersList').innerHTML = users.map(u => `<li>${u} <button onclick="deleteUser('${u}')">Supprimer</button></li>`).join('');
+        });
+        socket.on('connected_users', (users) => {
+            const ul = document.getElementById('connectedUsers');
+            ul.innerHTML = users.map(u => `<li>${u} <button onclick="deleteUser('${u}')">Supprimer</button></li>`).join('');
+        });
+        // WebRTC signaling events
+        socket.on('user-joined', async ({name}) => {
+            if (name === currentUser) return;
+            const pc = createPeerConnection(name);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit('offer', { sdp: pc.localDescription, to: name, from: currentUser, room: currentRoom });
+        });
+        socket.on('offer', async (data) => {
+            if (data.to !== currentUser || data.room !== currentRoom) return;
+            const pc = createPeerConnection(data.from);
+            await pc.setRemoteDescription(data.sdp);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('answer', { sdp: pc.localDescription, to: data.from, from: currentUser, room: currentRoom });
+        });
+        socket.on('answer', async (data) => {
+            if (data.to !== currentUser || data.room !== currentRoom) return;
+            const pc = peerConnections.get(data.from);
+            if (pc) await pc.setRemoteDescription(data.sdp);
+        });
+        socket.on('ice-candidate', (data) => {
+            if (data.to !== currentUser || data.room !== currentRoom) return;
+            const pc = peerConnections.get(data.from);
+            if (pc) pc.addIceCandidate(data.candidate);
+        });
+        socket.on('user-left', ({name, room}) => {
+            if (room !== currentRoom) return;
+            if (peerConnections.has(name)) {
+                peerConnections.get(name).close();
+                peerConnections.delete(name);
+            }
+            if (remoteVideos[name]) {
+                remoteVideos[name].remove();
+                delete remoteVideos[name];
+            }
+        });
         function loadLocalData() {
             // Charge depuis localStorage si serveur down
             inboxMessages = JSON.parse(localStorage.getItem('inboxMessages') || '[]');
@@ -273,17 +293,11 @@
             const pass = document.getElementById('password').value;
             if (!user || !pass) return showToast('Champs requis', 'error');
             const hashed = await hashPassword(pass);
-            if (socket) {
-                socket.emit('create_account', { username: user, hashedPass: hashed });
-                socket.once('account_created', (success) => {
-                    if (success) showToast('Compte créé', 'success');
-                    else showToast('Erreur: Utilisateur existe déjà', 'error');
-                });
-            } else {
-                // Fallback local
-                localStorage.setItem(user, hashed);
-                showToast('Compte créé (local)', 'success');
-            }
+            socket.emit('create_account', { username: user, hashedPass: hashed });
+            socket.once('account_created', (success) => {
+                if (success) showToast('Compte créé', 'success');
+                else showToast('Erreur: Utilisateur existe déjà', 'error');
+            });
         }
         document.getElementById('authForm').addEventListener('submit', async e => {
             e.preventDefault();
@@ -291,34 +305,32 @@
             const pass = document.getElementById('password').value;
             if (!user || !pass) return showToast('Champs requis', 'error');
             const hashed = await hashPassword(pass);
-            if (socket) {
-                socket.emit('login', { username: user, hashedPass: hashed });
-                socket.once('login_response', (response) => {
-                    if (response.success) {
-                        currentUser = user;
-                        isAdmin = response.isAdmin;
-                        showDashboard();
-                        initSocket();
-                        loadFriends();
-                    } else {
-                        showToast('Erreur login', 'error');
-                    }
-                });
-            } else {
-                // Fallback local
-                const stored = localStorage.getItem(user);
-                const adminHash = await hashPassword('YASSINEa1!');
-                if (stored === hashed || (user === 'yasscode' && hashed === adminHash)) {
+            socket.emit('login', { username: user, hashedPass: hashed });
+            socket.once('login_response', (response) => {
+                if (response.success) {
                     currentUser = user;
-                    isAdmin = user === 'yasscode';
+                    isAdmin = response.isAdmin;
+                    localStorage.setItem('currentUser', user);
+                    localStorage.setItem('hashedPass', hashed);
+                    localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
                     showDashboard();
                     loadFriends();
-                    showToast('Login local réussi', 'success');
                 } else {
                     showToast('Erreur login', 'error');
                 }
-            }
+            });
         });
+        function logout() {
+            socket.disconnect();
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('hashedPass');
+            localStorage.removeItem('isAdmin');
+            currentUser = '';
+            isAdmin = false;
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('login').classList.remove('hidden');
+            showToast('Déconnecté', 'info');
+        }
         function showDashboard() {
             document.getElementById('login').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
@@ -326,7 +338,7 @@
             if (isAdmin) {
                 document.getElementById('adminSection').classList.remove('hidden');
                 setInterval(() => {
-                    if (socket && socket.connected) {
+                    if (socket.connected) {
                         socket.emit('get_connected_users');
                     }
                 }, 5000);
@@ -457,7 +469,7 @@
             const name = document.getElementById('roomName').value || 'Salle Anonyme';
             currentRoom = name + '_' + Date.now();
             document.getElementById('roomId').value = currentRoom;
-            if (socket) socket.emit('create', { room: currentRoom, name: currentUser });
+            socket.emit('create', { room: currentRoom, name: currentUser });
             joinRoomInternal(currentRoom);
             showToast(`Salle créée: ${currentRoom}`, 'success');
         }
@@ -465,7 +477,7 @@
             const roomId = document.getElementById('roomId').value;
             if (!roomId) return showToast('Entrez un ID de salle', 'error');
             currentRoom = roomId;
-            if (socket) socket.emit('join', { room: roomId, name: currentUser });
+            socket.emit('join', { room: roomId, name: currentUser });
             joinRoomInternal(roomId);
             document.getElementById('chatSection').classList.remove('hidden');
         }
@@ -494,7 +506,7 @@
         function sendMessage() {
             const msg = document.getElementById('chatInput').value;
             if (msg && currentRoom) {
-                if (socket) socket.emit('message', { text: msg, room: currentRoom, user: currentUser });
+                socket.emit('message', { text: msg, room: currentRoom, user: currentUser });
                 addMessage(currentUser, msg);
                 document.getElementById('chatInput').value = '';
             }
@@ -513,18 +525,7 @@
             const type = document.getElementById('messageType').value;
             const text = document.getElementById('messageText').value;
             if (isAdmin && target && text) {
-                if (socket) {
-                    socket.emit('admin_send_message', { target, type, text, from: currentUser });
-                } else {
-                    // Fallback: Ajoute à inbox local si target == currentUser
-                    if (target === currentUser || target === 'all') {
-                        const msg = { id: Date.now(), type, text, from: 'Admin', read: false };
-                        inboxMessages.push(msg);
-                        saveLocalData();
-                        renderInbox();
-                        updateNotifications();
-                    }
-                }
+                socket.emit('admin_send_message', { target, type, text, from: currentUser });
                 showToast('Message envoyé', 'success');
                 document.getElementById('messageText').value = '';
             } else {
@@ -533,13 +534,14 @@
         }
         function deleteUser(user) {
             if (isAdmin && user && confirm(`Supprimer ${user}?`)) {
-                if (socket) {
-                    socket.emit('admin_delete_user', { username: user });
-                    socket.once('user_deleted', () => showToast('Utilisateur supprimé', 'success'));
-                } else {
-                    localStorage.removeItem(user);
-                    showToast(`${user} supprimé localement`, 'success');
-                }
+                socket.emit('admin_delete_user', { username: user });
+                socket.once('user_deleted', () => {
+                    showToast('Utilisateur supprimé', 'success');
+                    if (isAdmin) {
+                        socket.emit('get_all_users');
+                        socket.emit('get_connected_users');
+                    }
+                });
             }
         }
         function deleteUserPrompt() {
