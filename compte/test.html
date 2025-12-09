@@ -148,7 +148,7 @@
         let remoteVideos = {};
         let peerConnections = new Map();
         let friends = JSON.parse(localStorage.getItem('friends') || '[]');
-        let currentRoom = '';
+        let currentRoom = localStorage.getItem('currentRoom') || '';
         let inboxMessages = JSON.parse(localStorage.getItem('inboxMessages') || '[]');
         let unreadImportant = 0;
         let uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
@@ -191,26 +191,31 @@
             const storedHash = localStorage.getItem('hashedPass');
             if (storedUser && storedHash) {
                 socket.emit('login', { username: storedUser, hashedPass: storedHash });
-                socket.once('login_response', (response) => {
-                    if (response.success) {
-                        currentUser = storedUser;
-                        isAdmin = response.isAdmin;
-                        localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
-                        if (currentRoom) socket.emit('join', { room: currentRoom, name: currentUser });
-                        socket.emit('get_inbox', { user: currentUser });
-                        if (isAdmin) {
-                            socket.emit('get_all_users');
-                            socket.emit('get_connected_users');
-                        }
-                        showDashboard();
-                        loadFriends();
-                    } else {
-                        localStorage.removeItem('currentUser');
-                        localStorage.removeItem('hashedPass');
-                        localStorage.removeItem('isAdmin');
-                        showToast('Session expirée, veuillez vous reconnecter', 'error');
-                    }
-                });
+            }
+        });
+        socket.on('login_response', (response) => {
+            if (response.success) {
+                currentUser = response.username;
+                isAdmin = response.isAdmin;
+                localStorage.setItem('currentUser', currentUser);
+                localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
+                if (currentRoom) {
+                    socket.emit('join', { room: currentRoom, name: currentUser });
+                    joinRoomInternal(currentRoom);
+                    document.getElementById('chatSection').classList.remove('hidden');
+                }
+                socket.emit('get_inbox', { user: currentUser });
+                if (isAdmin) {
+                    socket.emit('get_all_users');
+                    socket.emit('get_connected_users');
+                }
+                showDashboard();
+                loadFriends();
+            } else {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('hashedPass');
+                localStorage.removeItem('isAdmin');
+                showToast('Session expirée, veuillez vous reconnecter', 'error');
             }
         });
         socket.on('connect_error', (err) => {
@@ -232,7 +237,7 @@
             if (msg.type.startsWith('important')) showToast('Nouveau message important!', 'important');
         });
         socket.on('message', (msg) => {
-            addMessage(msg.user, msg.text);
+            if (msg.room === currentRoom) addMessage(msg.user, msg.text);
         });
         socket.on('all_users', (users) => {
             document.getElementById('allUsersList').innerHTML = users.map(u => `<li>${u} <button onclick="deleteUser('${u}')">Supprimer</button></li>`).join('');
@@ -242,8 +247,8 @@
             ul.innerHTML = users.map(u => `<li>${u} <button onclick="deleteUser('${u}')">Supprimer</button></li>`).join('');
         });
         // WebRTC signaling events
-        socket.on('user-joined', async ({name}) => {
-            if (name === currentUser) return;
+        socket.on('user-joined', async ({name, room}) => {
+            if (name === currentUser || room !== currentRoom) return;
             const pc = createPeerConnection(name);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
@@ -252,7 +257,7 @@
         socket.on('offer', async (data) => {
             if (data.to !== currentUser || data.room !== currentRoom) return;
             const pc = createPeerConnection(data.from);
-            await pc.setRemoteDescription(data.sdp);
+            await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit('answer', { sdp: pc.localDescription, to: data.from, from: currentUser, room: currentRoom });
@@ -260,12 +265,12 @@
         socket.on('answer', async (data) => {
             if (data.to !== currentUser || data.room !== currentRoom) return;
             const pc = peerConnections.get(data.from);
-            if (pc) await pc.setRemoteDescription(data.sdp);
+            if (pc) await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
         });
-        socket.on('ice-candidate', (data) => {
+        socket.on('ice-candidate', async (data) => {
             if (data.to !== currentUser || data.room !== currentRoom) return;
             const pc = peerConnections.get(data.from);
-            if (pc) pc.addIceCandidate(data.candidate);
+            if (pc) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
         });
         socket.on('user-left', ({name, room}) => {
             if (room !== currentRoom) return;
@@ -279,7 +284,6 @@
             }
         });
         function loadLocalData() {
-            // Charge depuis localStorage si serveur down
             inboxMessages = JSON.parse(localStorage.getItem('inboxMessages') || '[]');
             renderInbox();
             updateNotifications();
@@ -287,7 +291,7 @@
         function saveLocalData() {
             localStorage.setItem('inboxMessages', JSON.stringify(inboxMessages));
         }
-        // Login et Create Account (avec fallback local)
+        // Login et Create Account
         async function createAccount() {
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
@@ -306,30 +310,26 @@
             if (!user || !pass) return showToast('Champs requis', 'error');
             const hashed = await hashPassword(pass);
             socket.emit('login', { username: user, hashedPass: hashed });
-            socket.once('login_response', (response) => {
-                if (response.success) {
-                    currentUser = user;
-                    isAdmin = response.isAdmin;
-                    localStorage.setItem('currentUser', user);
-                    localStorage.setItem('hashedPass', hashed);
-                    localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
-                    showDashboard();
-                    loadFriends();
-                } else {
-                    showToast('Erreur login', 'error');
-                }
-            });
         });
         function logout() {
-            socket.disconnect();
+            socket.emit('logout', { username: currentUser });
             localStorage.removeItem('currentUser');
             localStorage.removeItem('hashedPass');
             localStorage.removeItem('isAdmin');
+            localStorage.removeItem('currentRoom');
             currentUser = '';
             isAdmin = false;
+            currentRoom = '';
             document.getElementById('dashboard').classList.add('hidden');
             document.getElementById('login').classList.remove('hidden');
             showToast('Déconnecté', 'info');
+            if (localStream) localStream.getTracks().forEach(track => track.stop());
+            peerConnections.forEach(pc => pc.close());
+            peerConnections.clear();
+            remoteVideos = {};
+            document.getElementById('videoContainer').innerHTML = '';
+            document.getElementById('videoContainer').classList.add('hidden');
+            document.getElementById('chatSection').classList.add('hidden');
         }
         function showDashboard() {
             document.getElementById('login').classList.add('hidden');
@@ -338,14 +338,11 @@
             if (isAdmin) {
                 document.getElementById('adminSection').classList.remove('hidden');
                 setInterval(() => {
-                    if (socket.connected) {
-                        socket.emit('get_connected_users');
-                    }
+                    if (socket.connected) socket.emit('get_connected_users');
                 }, 5000);
             }
             renderInbox();
             loadFiles();
-            // Exp JS example
             (async () => {
                 for await (const v of (async function*() { yield 1; yield 2; }())) console.log('Exp JS:', v);
             })();
@@ -382,7 +379,7 @@
             badge.textContent = unreadImportant > 0 ? `⚠️ Attention: ${unreadImportant} messages importants non lus!` : '';
             badge.style.display = unreadImportant > 0 ? 'inline' : 'none';
         }
-        // File Manager (Nouvelle Feature)
+        // File Manager
         function uploadFiles() {
             const files = document.getElementById('fileUpload').files;
             for (let file of files) {
@@ -411,7 +408,7 @@
                 showToast(`${name} téléchargé`, 'success');
             }
         }
-        // Amis (inchangé)
+        // Amis
         function loadFriends() {
             const ul = document.getElementById('friendsList');
             ul.innerHTML = friends.map(f => `<li>${f} <button onclick="removeFriend('${f}')">Supprimer</button></li>`).join('');
@@ -432,12 +429,10 @@
             loadFriends();
             showToast(`${friend} supprimé`, 'success');
         }
-        // WebRTC (avec toggle video)
+        // WebRTC
         const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         function createPeerConnection(remoteUser) {
-            if (peerConnections.has(remoteUser)) {
-                return peerConnections.get(remoteUser);
-            }
+            if (peerConnections.has(remoteUser)) return peerConnections.get(remoteUser);
             const pc = new RTCPeerConnection(config);
             peerConnections.set(remoteUser, pc);
             pc.onicecandidate = (e) => {
@@ -460,25 +455,34 @@
                 }
                 remoteVideos[remoteUser].srcObject = e.streams[0];
             };
-            localStream.getTracks().forEach((track) => {
-                pc.addTrack(track, localStream);
-            });
+            pc.oniceconnectionstatechange = () => {
+                if (pc.iceConnectionState === 'disconnected') {
+                    if (remoteVideos[remoteUser]) {
+                        remoteVideos[remoteUser].remove();
+                        delete remoteVideos[remoteUser];
+                    }
+                    peerConnections.delete(remoteUser);
+                }
+            };
+            localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
             return pc;
         }
         async function createRoom() {
             const name = document.getElementById('roomName').value || 'Salle Anonyme';
             currentRoom = name + '_' + Date.now();
             document.getElementById('roomId').value = currentRoom;
+            localStorage.setItem('currentRoom', currentRoom);
             socket.emit('create', { room: currentRoom, name: currentUser });
-            joinRoomInternal(currentRoom);
+            await joinRoomInternal(currentRoom);
             showToast(`Salle créée: ${currentRoom}`, 'success');
         }
         async function joinRoom() {
             const roomId = document.getElementById('roomId').value;
             if (!roomId) return showToast('Entrez un ID de salle', 'error');
             currentRoom = roomId;
+            localStorage.setItem('currentRoom', currentRoom);
             socket.emit('join', { room: roomId, name: currentUser });
-            joinRoomInternal(roomId);
+            await joinRoomInternal(roomId);
             document.getElementById('chatSection').classList.remove('hidden');
         }
         async function joinRoomInternal(roomId) {
@@ -491,10 +495,21 @@
                 document.getElementById('videoContainer').appendChild(localVideo);
                 localVideo.srcObject = localStream;
                 document.getElementById('videoContainer').classList.remove('hidden');
+                socket.emit('get_room_users', { room: roomId });
             } catch (err) {
                 showToast('Erreur media: ' + err.message, 'error');
             }
         }
+        socket.on('room_users', async (users) => {
+            for (let user of users) {
+                if (user !== currentUser) {
+                    const pc = createPeerConnection(user);
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    socket.emit('offer', { sdp: pc.localDescription, to: user, from: currentUser, room: currentRoom });
+                }
+            }
+        });
         function toggleVideo() {
             videoEnabled = !videoEnabled;
             if (localStream) {
@@ -507,7 +522,6 @@
             const msg = document.getElementById('chatInput').value;
             if (msg && currentRoom) {
                 socket.emit('message', { text: msg, room: currentRoom, user: currentUser });
-                addMessage(currentUser, msg);
                 document.getElementById('chatInput').value = '';
             }
         }
@@ -537,10 +551,8 @@
                 socket.emit('admin_delete_user', { username: user });
                 socket.once('user_deleted', () => {
                     showToast('Utilisateur supprimé', 'success');
-                    if (isAdmin) {
-                        socket.emit('get_all_users');
-                        socket.emit('get_connected_users');
-                    }
+                    socket.emit('get_all_users');
+                    socket.emit('get_connected_users');
                 });
             }
         }
@@ -549,7 +561,7 @@
             deleteUser(user);
             document.getElementById('deleteUserInput').value = '';
         }
-        // ML Demos (avec sentiment basique)
+        // ML Demos
         let session = null;
         async function initMLSession() {
             if (session) return session;
@@ -584,7 +596,6 @@
         async function runSentimentDemo() {
             const text = prompt('Entrez du texte pour analyse sentiment:');
             if (!text) return;
-            // Simulation simple (remplacez par vrai modèle ONNX pour sentiment)
             const sentiments = ['Négatif', 'Neutre', 'Positif'];
             const randomSentiment = sentiments[Math.floor(Math.random() * sentiments.length)];
             document.getElementById('sentimentResult').innerHTML = `<div>Sentiment: ${randomSentiment}</div>`;
@@ -629,7 +640,6 @@
         function generateQR() {
             const text = prompt('Texte pour QR:') || currentRoom;
             if (!text) return;
-            // Utilise QRCode.js CDN pour simplicité
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
             script.onload = () => {
@@ -664,6 +674,9 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+        window.addEventListener('beforeunload', () => {
+            if (currentRoom) socket.emit('leave', { room: currentRoom, name: currentUser });
+        });
         // Hash Password
         async function hashPassword(pass) {
             const enc = new TextEncoder();
@@ -671,7 +684,7 @@
             const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('atherion'), iterations: 100000, hash: 'SHA-256' }, key, 256);
             return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
-        // AAD Login (inchangé)
+        // AAD Login
         const msalConfig = { auth: { clientId: 'YOUR_AZURE_CLIENT_ID' } };
         const msalInstance = new msal.PublicClientApplication(msalConfig);
         async function loginAAD() {
