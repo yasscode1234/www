@@ -3,579 +3,342 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Atherion XR • Mail + Visio + VR</title>
     <meta name="theme-color" content="#00ffff">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Atherion X • Android OS</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>█</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Orbitron:wght@900&display=swap" rel="stylesheet">
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-
+    <link rel="manifest" href="data:application/manifest+json,{
+      \"name\":\"Atherion XR\",
+      \"short_name\":\"Atherion\",
+      \"start_url\":\".\",
+      \"display\":\"standalone\",
+      \"background_color\":\"#000\",
+      \"theme_color\":\"#00ffff\",
+      \"icons\":[{\"src\":\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>A</text></svg>\",\"sizes\":\"192x192\",\"type\":\"image/svg+xml\"}]
+    }">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         :root {
+            --bg: #000814;
             --primary: #00ffff;
-            --primary-dark: #00b0b0;
             --accent: #ff00ff;
-            --bg: #0a0a1f;
-            --surface: rgba(20, 20, 50, 0.7);
-            --glass: rgba(15, 15, 40, 0.6);
-            --text: #e0e0ff;
-            --text-secondary: #a0a0ff;
-            --success: #00ff88;
-            --danger: #ff3366;
-            --warning: #ffaa00;
+            --glass: rgba(10,20,50,0.7);
+            --text: #e0faff;
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             background: var(--bg);
             color: var(--text);
+            height: 100dvh;
             overflow: hidden;
-            height: 100dvh;
-            touch-action: manipulation;
+            image-rendering: pixelated;
         }
+        canvas { position: fixed; top:0; left:0; z-index:-1; }
+        .matrix { position: fixed; inset:0; pointer-events:none; opacity:0.15; background: linear-gradient(transparent 50%, #00ffff 50%); background-size: 100% 4px; animation: rain 8s linear infinite; }
+        @keyframes rain { from { background-position: 0 0; } to { background-position: 0 1000px; } }
 
-        /* Fond animé 3D */
-        #scene-container {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -2;
-        }
-
-        /* Barre de statut Android */
-        .status-bar {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 28px;
-            background: linear-gradient(180deg, rgba(0,255,255,0.1), transparent);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-            font-size: 12px;
-            color: var(--primary);
-        }
-
-        /* Navigation inférieure */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 72px;
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(0,255,255,0.2);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 999;
-        }
-
-        .nav-item {
+        .container { padding: 20px; height: 100dvh; display: flex; flex-direction: column; }
+        .header {
             text-align: center;
-            color: var(--text-secondary);
-            transition: all 0.3s;
+            padding: 30px;
+            font-size: 42px;
+            font-weight: 900;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 40px var(--primary);
         }
-
-        .nav-item.active, .nav-item:active {
-            color: var(--primary);
-            transform: scale(1.2);
-        }
-
-        .nav-item svg { width: 28px; height: 28px; margin-bottom: 4px; }
-
-        /* Drawer latéral */
-        .drawer {
-            position: fixed;
-            top: 0; left: -280px;
-            width: 280px; height: 100dvh;
-            background: var(--glass);
-            backdrop-filter: blur(30px);
-            border-right: 1px solid rgba(0,255,255,0.3);
-            transition: left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            z-index: 1001;
-            padding-top: 60px;
-        }
-
-        .drawer.open { left: 0; }
-
-        .drawer-header {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(0,255,255,0.2);
-        }
-
-        .drawer-header h2 {
-            font-family: 'Orbitron', sans-serif;
-            color: var(--primary);
-            font-size: 24px;
-            text-shadow: 0 0 20px var(--primary);
-        }
-
-        .drawer-item {
-            padding: 16px 24px;
-            color: var(--text);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            transition: background 0.3s;
-        }
-
-        .drawer-item:active {
-            background: rgba(0,255,255,0.1);
-        }
-
-        /* Contenu principal */
-        .main-content {
-            padding: 40px 16px 90px;
-            height: 100dvh;
-            overflow-y: auto;
-            scrollbar-width: none;
-        }
-
-        .main-content::-webkit-scrollbar { display: none; }
-
         .card {
             background: var(--glass);
             backdrop-filter: blur(20px);
             border-radius: 24px;
-            padding: 20px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(0,255,255,0.2);
-            box-shadow: 0 8px 32px rgba(0,255,255,0.1);
+            padding: 24px;
+            margin: 12px 0;
+            border: 1px solid var(--primary);
+            box-shadow: 0 0 40px rgba(0,255,255,0.3);
         }
-
-        .title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 28px;
-            text-align: center;
-            margin: 20px 0;
-            color: var(--primary);
-            text-shadow: 0 0 30px var(--primary);
-        }
-
-        .btn {
-            background: linear-gradient(45deg, var(--primary), var(--accent));
-            color: black;
-            border: none;
-            padding: 14px 24px;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 16px;
-            margin: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(0,255,255,0.4);
-            transition: all 0.3s;
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 10px rgba(0,255,255,0.6);
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--primary);
-            color: var(--primary);
-        }
-
-        .input {
+        input, button, textarea {
             width: 100%;
             padding: 16px;
+            margin: 10px 0;
             border-radius: 16px;
-            border: 1px solid rgba(0,255,255,0.4);
-            background: rgba(255,255,255,0.05);
+            border: 2px solid var(--primary);
+            background: transparent;
             color: white;
-            margin: 8px 0;
-            font-size: 16px;
+            font-size: 18px;
         }
-
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(0,255,255,0.15);
-            padding: 8px 16px;
-            border-radius: 30px;
-            margin: 4px;
-            font-size: 14px;
-        }
-
-        .hidden { display: none !important; }
-
-        .fab {
-            position: fixed;
-            bottom: 90px;
-            right: 24px;
-            width: 60px;
-            height: 60px;
+        button {
             background: linear-gradient(45deg, var(--primary), var(--accent));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 30px rgba(0,255,255,0.5);
-            z-index: 998;
-            animation: pulse 2s infinite;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
         }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(0,255,255,0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(0,255,255,0); }
-            100% { box-shadow: 0 0 0 0 rgba(0,255,255,0); }
-        }
-
-        .toast {
+        button:hover { transform: scale(1.05); box-shadow: 0 0 30px var(--primary); }
+        .hidden { display: none; }
+        video { width: 100%; border-radius: 20px; border: 3px solid var(--primary); box-shadow: 0 0 40px var(--primary); margin: 10px 0; }
+        #xr-button {
             position: fixed;
-            bottom: 100px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            padding: 16px 24px;
-            border-radius: 50px;
-            border: 1px solid var(--primary);
-            color: white;
-            z-index: 10000;
-            animation: toastIn 0.5s, toastOut 0.5s 2.5s forwards;
+            padding: 20px 40px;
+            font-size: 24px;
+            z-index: 9999;
         }
-
-        @keyframes toastIn { from { transform: translateY(100px) translateX(-50%); opacity: 0; } to { transform: translateY(0) translateX(-50%); opacity: 1; } }
-        @keyframes toastOut { to { transform: translateY(100px) translateX(-50%); opacity: 0; } }
-
-        video {
-            width: 100%;
-            max-width: 400px;
-            border-radius: 20px;
-            border: 3px solid var(--primary);
-            box-shadow: 0 0 30px var(--primary);
-        }
-
-        /* Icônes SVG intégrées */
-        .icon { width: 24px; height: 24px; fill: currentColor; }
     </style>
 </head>
 <body>
 
-    <!-- Fond 3D -->
-    <div id="scene-container"></div>
+<div class="matrix"></div>
+<canvas id="bg"></canvas>
 
-    <!-- Barre de statut -->
-    <div class="status-bar">
-        <div>14:42</div>
-        <div style="display:flex;gap:8px">
-            <span>5G</span><span>98%</span>
-        </div>
+<div class="container">
+    <h1 class="header">ATHERION XR</h1>
+
+    <!-- LOGIN -->
+    <div id="login" class="card">
+        <h2>Connexion / Inscription</h2>
+        <input type="text" id="username" placeholder="Ton pseudo (ex: neo)">
+        <input type="password" id="password" placeholder="Mot de passe">
+        <button onclick="login()">ENTRER DANS LA MATRICE</button>
     </div>
 
-    <!-- Drawer -->
-    <div class="drawer" id="drawer">
-        <div class="drawer-header">
-            <h2>ATHERION X</h2>
-            <p id="drawerUser">Invité</p>
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="hidden">
+        <h2>Bienvenue, <span id="userDisplay"></span></h2>
+
+        <!-- MAIL SYSTEM -->
+        <div class="card">
+            <h3>Envoyer un Mail Cybernétique</h3>
+            <input type="text" id="to" placeholder="Destinataire">
+            <input type="text" id="subject" placeholder="Sujet">
+            <textarea id="body" rows="4" placeholder="Ton message..."></textarea>
+            <button onclick="sendMail()">ENVOYER</button>
         </div>
-        <div class="drawer-item" onclick="openPage('home')"><svg class="icon"><use href="#home"></use></svg> Accueil</div>
-        <div class="drawer-item" onclick="openPage('messages')"><svg class="icon"><use href="#msg"></use></svg> Messages</div>
-        <div class="drawer-item" onclick="openPage('friends')"><svg class="icon"><use href="#friends"></use></svg> Amis</div>
-        <div class="drawer-item" onclick="openPage('visio')"><svg class="icon"><use href="#video"></use></svg> Visio</div>
-        <div class="drawer-item" onclick="openPage('files')"><svg class="icon"><use href="#files"></use></svg> Fichiers</div>
-        <div class="drawer-item" onclick="openPage('ml')"><svg class="icon"><use href="#ai"></use></svg> IA</div>
-        <div class="drawer-item" onclick="logout()"><svg class="icon"><use href="#logout"></use></svg> Déconnexion</div>
+
+        <div class="card">
+            <h3>Boîte de Réception (<span id="mailCount">0</span>)</h3>
+            <div id="inbox"></div>
+        </div>
+
+        <!-- VISIO WEBRTC -->
+        <div class="card">
+            <h3>Visio Ultra HD</h3>
+            <input type="text" id="callUser" placeholder="Pseudo à appeler">
+            <button onclick="startCall()">APPELER</button>
+            <button onclick="hangUp()">RACCROCHER</button>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:20px;">
+                <video id="localVideo" autoplay muted playsinline></video>
+                <video id="remoteVideo" autoplay playsinline></video>
+            </div>
+        </div>
+
+        <!-- WEBXR VR MODE -->
+        <button id="xr-button" onclick="enterVR()">ENTRER EN RÉALITÉ VIRTUELLE (WebXR)</button>
     </div>
+</div>
 
-    <!-- Contenu principal -->
-    <div class="main-content" id="mainContent">
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script>
+// === VARIABLES GLOBALES ===
+let currentUser = '';
+let socket;
+let localStream;
+let pc;
+let mails = JSON.parse(localStorage.getItem('atherion_mails') || '[]');
+const peers = {};
 
-        <!-- Page Login -->
-        <div id="page-login">
-            <h1 class="title">Atherion X</h1>
-            <div class="card">
-                <input type="text" id="username" class="input" placeholder="Nom d'utilisateur">
-                <input type="password" id="password" class="input" placeholder="Mot de passe">
-                <button class="btn" onclick="login()">Connexion</button>
-                <button class="btn btn-outline" onclick="createAccount()">Créer un compte</button>
-            </div>
+// === BACKGROUND MATRIX 3D ===
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const matrix = "アカサタナハマヤラワガザダバパイキシチニヒミリヰギジヂビピウクステノフムユルグズデブプエケセネヘメレヱゲゼベペオコソトホモヨロヲゴゾドボポヴッン";
+const fontSize = 16;
+const columns = canvas.width / fontSize;
+const drops = Array(Math.floor(columns)).fill(1);
+
+function drawMatrix() {
+    ctx.fillStyle = 'rgba(0, 8, 20, 0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ffff';
+    ctx.font = fontSize + 'px monospace';
+
+    for (let i = 0; i < drops.length; i++) {
+        const text = matrix[Math.floor(Math.random() * matrix.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+    }
+}
+setInterval(drawMatrix, 35);
+
+// === LOGIN SYSTEM ===
+async function login() {
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value;
+
+    if (!user || !pass) return alert('Remplis tout morray');
+
+    currentUser = user;
+    document.getElementById('userDisplay').textContent = user;
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+
+    // Sauvegarde locale
+    localStorage.setItem('atherion_user', user);
+
+    // Connexion Socket.IO (mode local ou serveur)
+    try {
+        socket = io('https://atherion-socket.glitch.me'); // Serveur gratuit toujours en ligne
+    } catch {
+        socket = io(); // mode local
+    }
+
+    socket.emit('register', user);
+    loadMails();
+}
+
+// Charger mails
+function loadMails() {
+    const inbox = document.getElementById('inbox');
+    const myMails = mails.filter(m => m.to === currentUser);
+    document.getElementById('mailCount').textContent = myMails.length;
+
+    inbox.innerHTML = myMails.map(m => `
+        <div style="background:rgba(0,255,255,0.1); padding:16px; margin:8px 0; border-radius:16px; border-left:4px solid var(--primary);">
+            <b>De:</b> ${m.from}<br>
+            <b>Sujet:</b> ${m.subject}<br>
+            ${m.body}
+            <small style="float:right">${new Date(m.time).toLocaleString()}</small>
         </div>
+    `).join('') || '<i>Aucun message... pour l\'instant</i>';
+}
 
-        <!-- Page Accueil -->
-        <div id="page-home" class="hidden">
-            <h1 class="title">Bienvenue, <span id="currentUser">User</span></h1>
-            <div class="card">
-                <h3>Derniers messages</h3>
-                <div id="inboxPreview"></div>
-            </div>
-            <div class="card">
-                <button class="btn" onclick="openPage('visio')">Lancer une Visio</button>
-                <button class="btn" onclick="openPage('messages')">Voir tous les messages</button>
-            </div>
-        </div>
+// Envoyer mail
+function sendMail() {
+    const to = document.getElementById('to').value;
+    const subject = document.getElementById('subject').value;
+    const body = document.getElementById('body').value;
 
-        <!-- Page Messages -->
-        <div id="page-messages" class="hidden">
-            <h1 class="title">Messages</h1>
-            <div class="card">
-                <div id="inboxMessages"></div>
-                <button class="btn btn-outline" onclick="clearInbox()">Vider la boîte</button>
-            </div>
-        </div>
+    if (!to || !subject || !body) return alert('Remplis tout');
 
-        <!-- Page Visio -->
-        <div id="page-visio" class="hidden">
-            <h1 class="title">Visio Live</h1>
-            <div class="card">
-                <input type="text" id="roomName" class="input" placeholder="Nom de la salle">
-                <button class="btn" onclick="createRoom()">Créer Salle</button>
-                <input type="text" id="roomId" class="input" placeholder="ID Salle">
-                <button class="btn" onclick="joinRoom()">Rejoindre</button>
-                <div id="videoContainer" style="margin-top:20px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;"></div>
-            </div>
-        </div>
+    const mail = { from: currentUser, to, subject, body, time: Date.now() };
+    mails.push(mail);
+    localStorage.setItem('atherion_mails', JSON.stringify(mails));
 
-        <!-- Page Fichiers -->
-        <div id="page-files" class="hidden">
-            <h1 class="title">Fichiers</h1>
-            <div class="card">
-                <input type="file" id="fileUpload" multiple class="input">
-                <button class="btn" onclick="uploadFiles()">Uploader</button>
-                <ul id="fileList" style="margin-top:16px;"></ul>
-            </div>
-        </div>
+    // Envoi via socket si serveur dispo
+    if (socket) socket.emit('mail', mail);
 
-        <!-- Page IA -->
-        <div id="page-ml" class="hidden">
-            <h1 class="title">Intelligence Artificielle</h1>
-            <div class="card">
-                <input type="file" id="imageUpload" accept="image/*" class="input">
-                <button class="btn" onclick="runMLDemo()">Analyser Image</button>
-                <div id="mlResult" style="margin-top:20px;font-size:18px;"></div>
-            </div>
-        </div>
+    alert('Message envoyé dans la Matrice !');
+    document.getElementById('to').value = document.getElementById('subject').value = document.getElementById('body').value = '';
+    loadMails();
+}
 
-    </div>
+// === VISIO WEBRTC PUISSANTE ===
+const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-    <!-- Bouton FAB -->
-    <div class="fab" onclick="document.getElementById('drawer').classList.toggle('open')">
-        <svg width="32" height="32" fill="black"><path d="M4 12h16M12 4v16"/></svg>
-    </div>
+async function startCall() {
+    const target = document.getElementById('callUser').value;
+    if (!target) return alert('Qui tu veux appeler ?');
 
-    <!-- Navigation inférieure -->
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="openPage('home')">
-            <svg class="icon"><use href="#home"></use></svg>
-            <div>Accueil</div>
-        </div>
-        <div class="nav-item" onclick="openPage('messages')">
-            <svg class="icon"><use href="#msg"></use></svg>
-            <div>Messages</div>
-        </div>
-        <div class="nav-item" onclick="openPage('visio')">
-            <svg class="icon"><use href="#video"></use></svg>
-            <div>Visio</div>
-        </div>
-        <div class="nav-item" onclick="openPage('files')">
-            <svg class="icon"><use href="#files"></use></svg>
-            <div>Fichiers</div>
-        </div>
-    </div>
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    document.getElementById('localVideo').srcObject = localStream;
 
-    <!-- Icônes SVG cachées -->
-    <svg style="display:none">
-        <symbol id="home" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></symbol>
-        <symbol id="msg" viewBox="0 0 24 24"><path d="M8 12h8m-8 4h5m6-10H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2z"/></symbol>
-        <symbol id="video" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></symbol>
-        <symbol id="files" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></symbol>
-        <symbol id="friends" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0a3 3 0 10-6 0m6 0a3 3 0 11-6 0m6.5-6a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zm-13 0a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></symbol>
-        <symbol id="ai" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></symbol>
-        <symbol id="logout" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m-3 6v-2a4 4 0 014-4h8"/></symbol>
-    </svg>
+    pc = new RTCPeerConnection(config);
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-    <script>
-        // Variables globales (comme avant)
-        let currentUser = '';
-        let isAdmin = false;
-        let socket = null;
-        let pc = null;
-        let localStream = null;
-        let currentRoom = '';
-        let inboxMessages = JSON.parse(localStorage.getItem('inboxMessages') || '[]');
-        let friends = JSON.parse(localStorage.getItem('friends') || '[]');
-        let uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-        let videoEnabled = true;
+    pc.ontrack = e => {
+        document.getElementById('remoteVideo').srcObject = e.streams[0];
+    };
 
-        // 3D Background
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('scene-container').appendChild(renderer.domElement);
-
-        const geometry = new THREE.BufferGeometry();
-        const vertices = [];
-        for (let i = 0; i < 6000; i++) {
-            const x = (Math.random() - 0.5) * 2000;
-            const y = (Math.random() - 0.5) * 2000;
-            const z = (Math.random() - 0.5) * 2000;
-            vertices.push(x, y, z);
+    pc.onicecandidate = e => {
+        if (e.candidate && socket) {
+            socket.emit('ice', { candidate: e.candidate, to: target });
         }
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        const material = new THREE.PointsMaterial({ color: 0x00ffff, size: 3, transparent: true, opacity: 0.8 });
-        const points = new THREE.Points(geometry, material);
-        scene.add(points);
-        camera.position.z = 800;
+    };
 
-        function animate() {
-            requestAnimationFrame(animate);
-            points.rotation.y += 0.0005;
-            points.rotation.x += 0.0003;
-            renderer.render(scene, camera);
-        }
-        animate();
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    socket.emit('call', { offer, to: target, from: currentUser });
+}
 
-        // Toast
-        function showToast(msg) {
-            const t = document.createElement('div');
-            t.className = 'toast';
-            t.textContent = msg;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 3000);
-        }
+function hangUp() {
+    if (pc) pc.close();
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    document.getElementById('localVideo').srcObject = null;
+    document.getElementById('remoteVideo').srcObject = null;
+}
 
-        // Navigation
-        function openPage = (page) => {
-            document.querySelectorAll('[id^="page-"]').forEach(p => p.classList.add('hidden'));
-            document.getElementById(`page-${page}`).classList.remove('hidden');
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.querySelector(`[onclick="openPage('${page}')"]`)?.classList.add('active');
-        }
+// Réception d'appel
+socket?.on('call', async ({ offer, from }) => {
+    if (confirm(`${from} t'appelle en visio ! Accepter ?`)) {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('localVideo').srcObject = localStream;
 
-        // Login persistant
-        window.onload = () => {
-            const saved = localStorage.getItem('currentUser');
-            if (saved) {
-                currentUser = saved;
-                isAdmin = localStorage.getItem('isAdmin') === 'true';
-                document.getElementById('currentUser').textContent = currentUser;
-                document.getElementById('drawerUser').textContent = currentUser;
-                openPage('home');
-                initSocket();
-                renderInbox();
-            } else {
-                openPage('login');
-            }
-        }
+        pc = new RTCPeerConnection(config);
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-        // Connexion Socket
-        function initSocket() {
-            socket = io('http://localhost:3000');
-            socket.on('connect', () => showToast('Connecté !'));
-            socket.on('new_message', (msg) => {
-                inboxMessages.push(msg);
-                localStorage.setItem('inboxMessages', JSON.stringify(inboxMessages));
-                renderInbox();
-                showToast('Nouveau message !');
-            });
-        }
+        pc.ontrack = e => document.getElementById('remoteVideo').srcObject = e.streams[0];
 
-        // Login / Création compte
-        async function hashPassword(p) {
-            const e = new TextEncoder();
-            const h = await crypto.subtle.digest('SHA-256', e.encode(p + 'atherion'));
-            return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2,'0')).join('');
-        }
+        await pc.setRemoteDescription(offer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('answer', { answer, to: from });
+    }
+});
 
-        async function login() {
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            if (!u || !p) return showToast('Champs requis');
-            const h = await hashPassword(p);
-            const stored = localStorage.getItem(u);
-            if (stored === h || (u === 'yasscode' && h === await hashPassword('YASSINEa1!'))) {
-                currentUser = u;
-                isAdmin = u === 'yasscode';
-                localStorage.setItem('currentUser', u);
-                localStorage.setItem('isAdmin', isAdmin);
-                document.getElementById('currentUser').textContent = u;
-                document.getElementById('drawerUser').textContent = u;
-                openPage('home');
-                initSocket();
-                showToast('Bienvenue ' + u + ' !');
-            } else {
-                showToast('Identifiants incorrects');
-            }
-        }
+socket?.on('answer', ({ answer }) => {
+    pc.setRemoteDescription(answer);
+});
 
-        async function createAccount() {
-            const u = prompt('Nom utilisateur :');
-            const p = prompt('Mot de passe :');
-            if (u && p) {
-                const h = await hashPassword(p);
-                if (localStorage.getItem(u)) {
-                    showToast('Utilisateur existe déjà');
-                } else {
-                    localStorage.setItem(u, h);
-                    showToast('Compte créé !');
-                }
-            }
-        }
+socket?.on('ice', ({ candidate }) => {
+    if (pc) pc.addIceCandidate(candidate);
+});
 
-        function logout() {
-            localStorage.clear();
-            location.reload();
-        }
+// === MODE WEBXR TOTAL IMMERSION ===
+function enterVR() {
+    const scene = document.createElement('a-scene');
+    scene.setAttribute('background', 'color: #000');
+    scene.setAttribute('embedded', '');
+    scene.setAttribute('vr-mode-ui', 'enabled: true');
 
-        function renderInbox() {
-            const div = document.getElementById('inboxMessages');
-            const preview = document.getElementById('inboxPreview');
-            div.innerHTML = inboxMessages.map(m => `<div class="chip">${m.from}: ${m.text.substring(0,30)}...</div>`).join('');
-            preview.innerHTML = inboxMessages.slice(-3).reverse().map(m => `<div style="margin:8px 0">${m.from}: ${m.text}</div>`).join('') || '<i>Aucun message</i>';
-        }
+    // Avatar local
+    const player = document.createElement('a-box');
+    player.setAttribute('position', '0 1.6 -3');
+    player.setAttribute('color', '#00ffff');
+    scene.appendChild(player);
 
-        // Visio WebRTC (identique au précédent mais simplifié)
-        async function createRoom() {
-            currentRoom = 'room_' + Date.now();
-            await joinRoomInternal();
-            showToast('Salle créée : ' + currentRoom);
-        }
+    // Salle cyberpunk
+    const room = document.createElement('a-cylinder');
+    room.setAttribute('radius', '20');
+    room.setAttribute('height', '10');
+    room.setAttribute('color', '#001122');
+    room.setAttribute('material', 'metalness: 0.8; roughness: 0.2');
+    scene.appendChild(room);
 
-        async function joinRoom() {
-            currentRoom = document.getElementById('roomId').value || prompt('ID Salle ?');
-            if (currentRoom) await joinRoomInternal();
-        }
+    // Texte flottant
+    const text = document.createElement('a-text');
+    text.setAttribute('value', `Bienvenue dans la Matrice,\n${currentUser}`);
+    text.setAttribute('position', '0 3 -5');
+    text.setAttribute('color', '#00ffff');
+    text.setAttribute('align', 'center');
+    text.setAttribute('shader', 'msdf');
+    scene.appendChild(text);
 
-        async function joinRoomInternal() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                const v = document.createElement('video');
-                v.srcObject = localStream;
-                v.autoplay = true;
-                v.muted = true;
-                document.getElementById('videoContainer').appendChild(v);
-            } catch (e) {
-                showToast('Accès caméra refusé');
-            }
-        }
+    document.body.appendChild(scene);
+    scene.enterVR();
+}
 
-        function uploadFiles() {
-            // Identique à avant, sauvegarde en local
-            showToast('Fichiers uploadés localement');
-        }
-
-        // ML Demo simplifié
-        function runMLDemo() {
-            showToast('IA en cours de chargement... (demo)');
-            setTimeout(() => {
-                document.getElementById('mlResult').innerHTML = '<div style="color:var(--success)">→ Chat cybernétique détecté (98.7%)</div>';
-            }, 2000);
-        }
-
-        // Lancement
-        openPage('login');
-    </script>
-</body>
-</html>
+// Auto-login si déjà connecté
+if (localStorage.getItem('atherion_user')) {
+    currentUser = localStorage.getItem('atherion_user');
+    document.getElementById('userDisplay').textContent = currentUser;
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    loadMails();
+}
+</script>
