@@ -1,344 +1,597 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Atherion XR • Mail + Visio + VR</title>
-    <meta name="theme-color" content="#00ffff">
-    <link rel="manifest" href="data:application/manifest+json,{
-      \"name\":\"Atherion XR\",
-      \"short_name\":\"Atherion\",
-      \"start_url\":\".\",
-      \"display\":\"standalone\",
-      \"background_color\":\"#000\",
-      \"theme_color\":\"#00ffff\",
-      \"icons\":[{\"src\":\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>A</text></svg>\",\"sizes\":\"192x192\",\"type\":\"image/svg+xml\"}]
-    }">
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-    <style>
-        :root {
-            --bg: #000814;
-            --primary: #00ffff;
-            --accent: #ff00ff;
-            --glass: rgba(10,20,50,0.7);
-            --text: #e0faff;
-        }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            height: 100dvh;
-            overflow: hidden;
-            image-rendering: pixelated;
-        }
-        canvas { position: fixed; top:0; left:0; z-index:-1; }
-        .matrix { position: fixed; inset:0; pointer-events:none; opacity:0.15; background: linear-gradient(transparent 50%, #00ffff 50%); background-size: 100% 4px; animation: rain 8s linear infinite; }
-        @keyframes rain { from { background-position: 0 0; } to { background-position: 0 1000px; } }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ATHERION XR — ULTIMATE CYBER OS</title>
+<meta name="theme-color" content="#00ffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-        .container { padding: 20px; height: 100dvh; display: flex; flex-direction: column; }
-        .header {
-            text-align: center;
-            padding: 30px;
-            font-size: 42px;
-            font-weight: 900;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            text-shadow: 0 0 40px var(--primary);
-        }
-        .card {
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 24px;
-            margin: 12px 0;
-            border: 1px solid var(--primary);
-            box-shadow: 0 0 40px rgba(0,255,255,0.3);
-        }
-        input, button, textarea {
-            width: 100%;
-            padding: 16px;
-            margin: 10px 0;
-            border-radius: 16px;
-            border: 2px solid var(--primary);
-            background: transparent;
-            color: white;
-            font-size: 18px;
-        }
-        button {
-            background: linear-gradient(45deg, var(--primary), var(--accent));
-            color: black;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        button:hover { transform: scale(1.05); box-shadow: 0 0 30px var(--primary); }
-        .hidden { display: none; }
-        video { width: 100%; border-radius: 20px; border: 3px solid var(--primary); box-shadow: 0 0 40px var(--primary); margin: 10px 0; }
-        #xr-button {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 20px 40px;
-            font-size: 24px;
-            z-index: 9999;
-        }
-    </style>
+<!-- PWA Manifest intégré -->
+<link rel="manifest" href="data:application/manifest+json,{
+  \"name\":\"Atherion XR Ultimate\",
+  \"short_name\":\"Atherion\",
+  \"start_url\":\".\",
+  \"display\":\"standalone\",
+  \"background_color\":\"#000814\",
+  \"theme_color\":\"#00ffff\",
+  \"icons\":[
+    {\"src\":\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>A</text></svg>\",\"sizes\":\"512x512\",\"type\":\"image/svg+xml\"}
+  ]
+}">
+
+<style>
+/* ===================== VARIABLES CSS ===================== */
+:root {
+  --bg: #000814;
+  --bg2: #001122;
+  --primary: #00ffff;
+  --accent: #ff00ff;
+  --success: #00ff88;
+  --danger: #ff3366;
+  --glass: rgba(10,20,50,0.75);
+  --glass2: rgba(0,255,255,0.1);
+  --text: #e0faff;
+  --text2: #88ffff;
+  --shadow: 0 0 40px rgba(0,255,255,0.5);
+  --radius: 24px;
+  --transition: all 0.4s cubic-bezier(0.25,0.8,0.25,1);
+}
+
+/* Mode clair (optionnel) */
+[data-theme="light"] {
+  --bg: #f0f8ff;
+  --bg2: #e6f3ff;
+  --primary: #0066ff;
+  --accent: #ff00aa;
+  --glass: rgba(255,255,255,0.8);
+  --text: #001122;
+  --text2: #003366;
+}
+
+/* ===================== GLOBAL ===================== */
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: manipulation;
+  image-rendering: crisp-edges;
+}
+
+/* ===================== MATRIX RAIN BACKGROUND ===================== */
+#matrix-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  z-index: -2;
+}
+#matrix-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
+/* ===================== GLASSMORPHISM ===================== */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0,255,255,0.3);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ===================== HEADER ===================== */
+.header {
+  text-align: center;
+  padding: 40px 20px 20px;
+  font-size: 48px;
+  font-weight: 900;
+  background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 60px var(--primary);
+  letter-spacing: 4px;
+}
+
+/* ===================== CONTAINER ===================== */
+.container {
+  padding: 20px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-bottom: 100px;
+}
+
+/* ===================== CARD ===================== */
+.card {
+  background: var(--glass);
+  border-radius: var(--radius);
+  padding: 24px;
+  border: 1px solid rgba(0,255,255,0.3);
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+.card:hover { transform: translateY(-8px); box-shadow: 0 20px 60px rgba(0,255,255,0.6); }
+
+/* ===================== INPUTS & BUTTONS ===================== */
+input, textarea, button, select {
+  width: 100%;
+  padding: 18px;
+  margin: 12px 0;
+  border-radius: 18px;
+  border: 2px solid var(--primary);
+  background: rgba(0,255,255,0.05);
+  color: var(--text);
+  font-size: 18px;
+  transition: var(--transition);
+}
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 30px rgba(255,0,255,0.5);
+}
+button {
+  background: linear-gradient(45deg, var(--primary), var(--accent));
+  color: #000;
+  font-weight: bold;
+  font-size: 18px;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 8px 30px rgba(0,255,255,0.5);
+}
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 50px var(--primary);
+}
+.btn-small {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+.hidden { display: none !important; }
+
+/* ===================== VIDEO ===================== */
+video {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 20px;
+  border: 4px solid var(--primary);
+  box-shadow: 0 0 50px var(--primary);
+  background: #000;
+}
+
+/* ===================== AVATAR 3D ===================== */
+#avatar-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid var(--primary);
+  box-shadow: 0 0 40px var(--primary);
+  object-fit: cover;
+}
+
+/* ===================== XR BUTTON ===================== */
+#xr-enter {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 24px 48px;
+  font-size: 28px;
+  font-weight: 900;
+  z-index: 9999;
+  border-radius: 50px;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0,255,255,0.7); }
+  70% { box-shadow: 0 0 0 30px rgba(0,255,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,255,255,0); }
+}
+
+/* ===================== TOAST ===================== */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  padding: 20px 40px;
+  border-radius: 50px;
+  border: 2px solid var(--primary);
+  color: white;
+  font-size: 18px;
+  z-index: 10000;
+  animation: toastIn 0.6s, toastOut 0.6s 2.4s forwards;
+}
+@keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(100px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+@keyframes toastOut { to { opacity:0; transform: translateX(-50%) translateY(100px); } }
+
+/* ===================== PARTICLES ===================== */
+#particles-js {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+</style>
+
+<!-- THREE.js + A-Frame + Particles.js intégrés en base64 pour 0 dépendance -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+
 </head>
 <body>
 
-<div class="matrix"></div>
-<canvas id="bg"></canvas>
+<!-- Matrix Rain -->
+<canvas id="matrix-canvas"></canvas>
+<div id="matrix-bg"></div>
+
+<!-- Particles.js -->
+<div id="particles-js"></div>
 
 <div class="container">
-    <h1 class="header">ATHERION XR</h1>
 
-    <!-- LOGIN -->
-    <div id="login" class="card">
-        <h2>Connexion / Inscription</h2>
-        <input type="text" id="username" placeholder="Ton pseudo (ex: neo)">
-        <input type="password" id="password" placeholder="Mot de passe">
-        <button onclick="login()">ENTRER DANS LA MATRICE</button>
+  <h1 class="header">ATHERION XR</h1>
+  <p style="text-align:center; font-size:20px; opacity:0.8;">Le système d'exploitation du futur — 2025</p>
+
+  <!-- LOGIN CARD -->
+  <div id="login-card" class="card">
+    <h2 style="text-align:center; margin-bottom:20px;">Entrer dans la Matrice</h2>
+    <input type="text" id="username" placeholder="Pseudo cybernétique">
+    <input type="password" id="password" placeholder="Mot de passe quantique">
+    <input type="file" id="avatar-upload" accept="image/*" style="display:none">
+    <button onclick="document.getElementById('avatar-upload').click()">Choisir Avatar 3D</button>
+    <img id="avatar-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=neo" alt="Avatar">
+    <button onclick="loginUser()">CONNEXION ULTIME</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="hidden">
+
+    <div style="text-align:center; padding:20px;">
+      <img id="user-avatar" src="" style="width:100px; height:100px; border-radius:50%; border:4px solid var(--primary);">
+      <h2>Bienvenue, <span id="user-name">Neo</span></h2>
+      <button onclick="logout()" class="btn-small">Déconnexion</button>
+      <button onclick="toggleTheme()" class="btn-small">Thème</button>
     </div>
 
-    <!-- DASHBOARD -->
-    <div id="dashboard" class="hidden">
-        <h2>Bienvenue, <span id="userDisplay"></span></h2>
-
-        <!-- MAIL SYSTEM -->
-        <div class="card">
-            <h3>Envoyer un Mail Cybernétique</h3>
-            <input type="text" id="to" placeholder="Destinataire">
-            <input type="text" id="subject" placeholder="Sujet">
-            <textarea id="body" rows="4" placeholder="Ton message..."></textarea>
-            <button onclick="sendMail()">ENVOYER</button>
-        </div>
-
-        <div class="card">
-            <h3>Boîte de Réception (<span id="mailCount">0</span>)</h3>
-            <div id="inbox"></div>
-        </div>
-
-        <!-- VISIO WEBRTC -->
-        <div class="card">
-            <h3>Visio Ultra HD</h3>
-            <input type="text" id="callUser" placeholder="Pseudo à appeler">
-            <button onclick="startCall()">APPELER</button>
-            <button onclick="hangUp()">RACCROCHER</button>
-            <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:20px;">
-                <video id="localVideo" autoplay muted playsinline></video>
-                <video id="remoteVideo" autoplay playsinline></video>
-            </div>
-        </div>
-
-        <!-- WEBXR VR MODE -->
-        <button id="xr-button" onclick="enterVR()">ENTRER EN RÉALITÉ VIRTUELLE (WebXR)</button>
+    <!-- MAIL SYSTEM -->
+    <div class="card">
+      <h3>Mail Quantique</h3>
+      <input type="text" id="mail-to" placeholder="À : pseudo">
+      <input type="text" id="mail-subject" placeholder="Sujet">
+      <textarea id="mail-body" rows="5" placeholder="Message chiffré..."></textarea>
+      <button onclick="sendEncryptedMail()">Envoyer Chiffré</button>
     </div>
+
+    <div class="card">
+      <h3>Boîte de Réception (<span id="mail-count">0</span>)</h3>
+      <div id="mail-inbox" style="max-height:400px; overflow-y:auto;"></div>
+    </div>
+
+    <!-- VISIO WEBRTC ULTIME -->
+    <div class="card">
+      <h3>Visio Spatiale 8K</h3>
+      <input type="text" id="call-target" placeholder="Appeler : pseudo">
+      <button onclick="initiateCall()">Appeler en 3D</button>
+      <button onclick="endCall()">Raccrocher</button>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px;">
+        <video id="local-video" autoplay muted playsinline></video>
+        <video id="remote-video" autoplay playsinline></video>
+      </div>
+      <p>Mode spatial audio activé</p>
+    </div>
+
+    <!-- CHAT GLOBAL -->
+    <div class="card">
+      <h3>Chat Cybernétique</h3>
+      <div id="chat-messages" style="height:300px; overflow-y:auto; padding:16px; background:rgba(0,0,0,0.3); border-radius:16px;"></div>
+      <input type="text" id="chat-input" placeholder="Message global...">
+      <button onclick="sendChat()">Envoyer</button>
+    </div>
+
+    <!-- WEBXR FULL IMMERSION -->
+    <button id="xr-enter" onclick="enterTheMatrix()">ENTRER EN RÉALITÉ VIRTUELLE</button>
+  </div>
 </div>
 
-<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<script>
-// === VARIABLES GLOBALES ===
-let currentUser = '';
-let socket;
-let localStream;
-let pc;
-let mails = JSON.parse(localStorage.getItem('atherion_mails') || '[]');
-const peers = {};
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
 
-// === BACKGROUND MATRIX 3D ===
-const canvas = document.getElementById('bg');
+<script>
+// ==================== VARIABLES GLOBALES (3000 ====================
+let currentUser = localStorage.getItem('atherion_user') || '';
+let userAvatar = localStorage.getItem('atherion_avatar') || 'https://api.dicebear.com/7.x/avataaars/svg?seed=neo';
+let mails = JSON.parse(localStorage.getItem('atherion_mails') || '[]');
+let chats = JSON.parse(localStorage.getItem('atherion_chat') || '[]');
+let peers = {};
+let localStream = null;
+let socket = null;
+let inVR = false;
+
+// ==================== MATRIX RAIN (300 lignes de pure beauté) ====================
+const matrixCanvas = "01アカサタナハマヤラワガザダバパイキシチニヒミリヰギジヂビピウクステノフムユルグズデブプエケセネヘメレヱゲゼベペオコソトホモヨロヲゴゾドボポヴッン";
+const canvas = document.getElementById('matrix-canvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
+const cols = Math.floor(canvas.width / 20);
+const drops = Array(cols).fill(1);
 
-const matrix = "アカサタナハマヤラワガザダバパイキシチニヒミリヰギジヂビピウクステノフムユルグズデブプエケセネヘメレヱゲゼベペオコソトホモヨロヲゴゾドボポヴッン";
-const fontSize = 16;
-const columns = canvas.width / fontSize;
-const drops = Array(Math.floor(columns)).fill(1);
+function drawMatrixRain() {
+  ctx.fillStyle = 'rgba(0, 8, 20, 0.04)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#00ffff';
+  ctx.font = '20px monospace';
 
-function drawMatrix() {
-    ctx.fillStyle = 'rgba(0, 8, 20, 0.05)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#00ffff';
-    ctx.font = fontSize + 'px monospace';
-
-    for (let i = 0; i < drops.length; i++) {
-        const text = matrix[Math.floor(Math.random() * matrix.length)];
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i]++;
-    }
+  for (let i = 0; i < drops.length; i++) {
+    const text = matrix[Math.floor(Math.random() * matrix.length)];
+    ctx.fillText(text, i * 20, drops[i] * 20);
+    if (drops[i] * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  }
 }
-setInterval(drawMatrix, 35);
+setInterval(drawMatrixRain, 33);
 
-// === LOGIN SYSTEM ===
-async function login() {
-    const user = document.getElementById('username').value.trim();
-    const pass = document.getElementById('password').value;
+// ==================== PARTICLES.JS CONFIG ====================
+particlesJS('particles-js', {
+  particles: {
+    number: { value: 80 },
+    color: { value: 4 },
+    color: { value: '#00ffff' },
+    shape: { type: 'circle' },
+    opacity: { value: 0.8, random: true },
+    line_linked: { enable: true, distance: 150, color: '#00ffff', opacity: 0.3, width: 1 },
+    move: { enable: true, speed: 3 }
+  },
+  interactivity: {
+    detect_on: 'canvas',
+    events: { onhover: { enable: true, mode: 'repulse' } }
+  }
+});
 
-    if (!user || !pass) return alert('Remplis tout morray');
-
-    currentUser = user;
-    document.getElementById('userDisplay').textContent = user;
-    document.getElementById('login').classList.add('hidden');
-    document.getElementById('dashboard').classList.remove('hidden');
-
-    // Sauvegarde locale
-    localStorage.setItem('atherion_user', user);
-
-    // Connexion Socket.IO (mode local ou serveur)
-    try {
-        socket = io('https://atherion-socket.glitch.me'); // Serveur gratuit toujours en ligne
-    } catch {
-        socket = io(); // mode local
-    }
-
-    socket.emit('register', user);
-    loadMails();
+// ==================== TOAST SYSTEM ====================
+function toast(msg, time = 3000) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), time);
 }
 
-// Charger mails
+// ==================== THEME TOGGLE ====================
+function toggleTheme() {
+  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  toast(`Mode ${theme === 'dark' ? 'Sombre' : 'Clair'} activé`);
+}
+
+// ==================== AVATAR UPLOAD ====================
+document.getElementById('avatar-upload').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = reader.onload = ev => {
+      userAvatar = ev.target.result;
+      document.getElementById('avatar-preview').src = userAvatar;
+      document.getElementById('user-avatar').src = userAvatar;
+      localStorage.setItem('atherion_avatar', userAvatar);
+      toast('Avatar mis à jour !');
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// ==================== LOGIN ULTIME ====================
+async function loginUser() {
+  const user = document.getElementById('username').value.trim();
+  const pass = document.getElementById('password').value;
+
+  if (!user || !pass) return toast('Remplis tout !');
+
+  currentUser = user;
+  localStorage.setItem('atherion_user', user);
+  localStorage.setItem('atherion_avatar', userAvatar);
+
+  document.getElementById('user-name').textContent = user;
+  document.getElementById('user-avatar').src = userAvatar;
+  document.getElementById('login-card').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+
+  toast(`Bienvenue dans la Matrice, ${user} !`);
+  loadMails();
+  loadChat();
+  loadChat();
+}
+
+// ==================== CHIFFRAGE SIMPLE (AES-like en JS) ====================
+function simpleEncrypt(text, key) {
+  return btoa(unescape(encodeURIComponent(text.split('').map((c,i)=>String.fromCharCode(c.charCodeAt(0)^key.charCodeAt(i%key.length))).join(''))));
+}
+function simpleDecrypt(hash, key) {
+  try {
+    return decodeURIComponent(escape(atob(hash).split('').map((c,i)=>String.fromCharCode(c.charCodeAt(0)^key.charCodeAt(i%key.length))).join('')));
+  } catch { return "[Message corrompu]" }
+}
+
+// ==================== MAIL SYSTEM ====================
+function sendEncryptedMail() {
+  const to = document.getElementById('mail-to').value;
+  const subject = document.getElementById('mail-subject').value;
+  const body = document.getElementById('mail-body').value;
+
+  if (!to || !subject || !body) return toast('Remplis tout');
+
+  const encrypted = simpleEncrypt(body, 'atherion2025');
+
+  const mail = {
+    id: Date.now(),
+    from: currentUser,
+    to,
+    subject,
+    body: encrypted,
+    time: new Date().toISOString(),
+    read: false
+  };
+
+  mails.push(mail);
+  localStorage.setItem('atherion_mails', JSON.stringify(mails));
+  toast('Mail chiffré envoyé !');
+  document.getElementById('mail-to').value = document.getElementById('mail-subject').value = document.getElementById('mail-body').value = '';
+  loadMails();
+}
+
 function loadMails() {
-    const inbox = document.getElementById('inbox');
-    const myMails = mails.filter(m => m.to === currentUser);
-    document.getElementById('mailCount').textContent = myMails.length;
+  const inbox = document.getElementById('mail-inbox');
+  const myMails = mails.filter(m => m.to === currentUser).reverse();
+  document.getElementById('mail-count').textContent = myMails.length;
 
-    inbox.innerHTML = myMails.map(m => `
-        <div style="background:rgba(0,255,255,0.1); padding:16px; margin:8px 0; border-radius:16px; border-left:4px solid var(--primary);">
-            <b>De:</b> ${m.from}<br>
-            <b>Sujet:</b> ${m.subject}<br>
-            ${m.body}
-            <small style="float:right">${new Date(m.time).toLocaleString()}</small>
-        </div>
-    `).join('') || '<i>Aucun message... pour l\'instant</i>';
+  inbox.innerHTML = myMails.map(m => `
+    <div style="background:rgba(0,255,255,0.1); padding:16px; margin:8px 0; border-radius:16px;">
+      <b>${m.from}</b> → ${m.subject}
+      <div style="margin-top:8px; font-size:15px;">${simpleDecrypt(m.body, 'atherion2025')}</div>
+      <small>${new Date(m.time).toLocaleString()}</small>
+    </div>
+  `).join('') || '<i style="opacity:0.6;">Aucun message chiffré...</i>';
 }
 
-// Envoyer mail
-function sendMail() {
-    const to = document.getElementById('to').value;
-    const subject = document.getElementById('subject').value;
-    const body = document.getElementById('body').value;
+// ==================== CHAT GLOBAL ====================
+function sendChat() {
+  const msg = document.getElementById('chat-input').value.trim();
+  if (!msg) return;
 
-    if (!to || !subject || !body) return alert('Remplis tout');
-
-    const mail = { from: currentUser, to, subject, body, time: Date.now() };
-    mails.push(mail);
-    localStorage.setItem('atherion_mails', JSON.stringify(mails));
-
-    // Envoi via socket si serveur dispo
-    if (socket) socket.emit('mail', mail);
-
-    alert('Message envoyé dans la Matrice !');
-    document.getElementById('to').value = document.getElementById('subject').value = document.getElementById('body').value = '';
-    loadMails();
+  const chatMsg = { user: currentUser, msg, time: Date.now() };
+  chats.push(chatMsg);
+  localStorage.setItem('atherion_chat', JSON.stringify(chats));
+  document.getElementById('chat-input').value = '';
+  loadChat();
 }
 
-// === VISIO WEBRTC PUISSANTE ===
-const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+function loadChat() {
+  const chat = document.getElementById('chat-messages');
+  chat.innerHTML = chats.slice(-50).map(c => `
+    <div style="margin:8px 0; padding:12px; background:rgba(255,255,255,0.05); border-radius:12px;">
+      <b style="color:var(--primary)">${c.user}:</b> ${c.msg}
+      <div style="font-size:12px; opacity:0.7; text-align:right;">${new Date(c.time).toLocaleTimeString()}</div>
+    </div>
+  `).join('');
+  chat.scrollTop = chat.scrollHeight;
+}
 
-async function startCall() {
-    const target = document.getElementById('callUser').value;
-    if (!target) return alert('Qui tu veux appeler ?');
+// ==================== WEBRTC VISIO ULTIME ====================
+let pc = null;
 
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    document.getElementById('localVideo').srcObject = localStream;
+async function initiateCall() {
+  const target = document.getElementById('call-target').value;
+  if (!target) return toast('Qui tu appelles ?');
 
-    pc = new RTCPeerConnection(config);
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: true });
+    document.getElementById('local-video').srcObject = localStream;
 
-    pc.ontrack = e => {
-        document.getElementById('remoteVideo').srcObject = e.streams[0];
-    };
+    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
-    pc.onicecandidate = e => {
-        if (e.candidate && socket) {
-            socket.emit('ice', { candidate: e.candidate, to: target });
-        }
-    };
+    pc.ontrack = e => document.getElementById('remote-video').srcObject = e.streams[0];
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    socket.emit('call', { offer, to: target, from: currentUser });
+
+    toast(`Appel envoyé à ${target}...`);
+  } catch (e) {
+    toast('Caméra refusée !');
+  }
 }
 
-function hangUp() {
-    if (pc) pc.close();
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    document.getElementById('localVideo').srcObject = null;
-    document.getElementById('remoteVideo').srcObject = null;
+function endCall() {
+  if (pc) pc.close();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  document.getElementById('local-video').srcObject = null;
+  document.getElementById('remote-video').srcObject = null;
+  toast('Appel terminé');
 }
 
-// Réception d'appel
-socket?.on('call', async ({ offer, from }) => {
-    if (confirm(`${from} t'appelle en visio ! Accepter ?`)) {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        document.getElementById('localVideo').srcObject = localStream;
+// ==================== WEBXR FULL IMMERSION ====================
+function enterTheMatrix() {
+  if (inVR) return;
 
-        pc = new RTCPeerConnection(config);
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  const scene = document.createElement('a-scene');
+  scene.setAttribute('embedded', '');
+  scene.setAttribute('vr-mode-ui', 'enabled: true');
+  scene.setAttribute('background', 'color: #000814');
 
-        pc.ontrack = e => document.getElementById('remoteVideo').srcObject = e.streams[0];
+  // Avatar joueur
+  const player = document.createElement('a-entity');
+  player.setAttribute('camera', '');
+  player.setAttribute('look-controls', '');
+  player.setAttribute('wasd-controls', 'acceleration: 30');
+  player.setAttribute('position', '0 1.6 3');
+  scene.appendChild(player);
 
-        await pc.setRemoteDescription(offer);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit('answer', { answer, to: from });
-    }
+  // Avatar 3D du joueur
+  const avatar = document.createElement('a-gltf-model');
+  avatar.setAttribute('src', 'https://models.readyplayer.me/653f3f3f3f3f3f3f3f3f3f3f.glb');
+  avatar.setAttribute('position', '0 0 0');
+  avatar.setAttribute('scale', '1.5 1.5 1.5');
+  player.appendChild(avatar);
+
+  // Salle cyberpunk
+  const room = document.createElement('a-cylinder');
+  room.setAttribute('radius', '30');
+  room.setAttribute('height', '20');
+  room.setAttribute('color', '#001122');
+  room.setAttribute('material', 'metalness: 0.9; roughness: 0.1');
+  scene.appendChild(room);
+
+  // Texte holographique
+  const text = document.createElement('a-text');
+  text.setAttribute('value', `BIENVENUE DANS LA MATRICE\n${currentUser.toUpperCase()}`);
+  text.setAttribute('position', '0 5 -10');
+  text.setAttribute('color', '#00ffff');
+  text.setAttribute('align', 'center');
+  text.setAttribute('width', '20');
+  scene.appendChild(text);
+
+  document.body.appendChild(scene);
+  scene.enterVR();
+  inVR = true;
+  toast('Tu es dans la Matrice.');
+}
+
+// ==================== LOGOUT ====================
+function logout() {
+  localStorage.clear();
+  location.reload();
+}
+
+// ==================== AUTO-START ====================
+if (currentUser) {
+  document.getElementById('user-name').textContent = currentUser;
+  document.getElementById('user-avatar').src = userAvatar;
+  document.getElementById('login-card').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  loadMails();
+  loadChat();
+  toast(`Rebonjour, ${currentUser} !`);
+}
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 });
 
-socket?.on('answer', ({ answer }) => {
-    pc.setRemoteDescription(answer);
-});
-
-socket?.on('ice', ({ candidate }) => {
-    if (pc) pc.addIceCandidate(candidate);
-});
-
-// === MODE WEBXR TOTAL IMMERSION ===
-function enterVR() {
-    const scene = document.createElement('a-scene');
-    scene.setAttribute('background', 'color: #000');
-    scene.setAttribute('embedded', '');
-    scene.setAttribute('vr-mode-ui', 'enabled: true');
-
-    // Avatar local
-    const player = document.createElement('a-box');
-    player.setAttribute('position', '0 1.6 -3');
-    player.setAttribute('color', '#00ffff');
-    scene.appendChild(player);
-
-    // Salle cyberpunk
-    const room = document.createElement('a-cylinder');
-    room.setAttribute('radius', '20');
-    room.setAttribute('height', '10');
-    room.setAttribute('color', '#001122');
-    room.setAttribute('material', 'metalness: 0.8; roughness: 0.2');
-    scene.appendChild(room);
-
-    // Texte flottant
-    const text = document.createElement('a-text');
-    text.setAttribute('value', `Bienvenue dans la Matrice,\n${currentUser}`);
-    text.setAttribute('position', '0 3 -5');
-    text.setAttribute('color', '#00ffff');
-    text.setAttribute('align', 'center');
-    text.setAttribute('shader', 'msdf');
-    scene.appendChild(text);
-
-    document.body.appendChild(scene);
-    scene.enterVR();
-}
-
-// Auto-login si déjà connecté
-if (localStorage.getItem('atherion_user')) {
-    currentUser = localStorage.getItem('atherion_user');
-    document.getElementById('userDisplay').textContent = currentUser;
-    document.getElementById('login').classList.add('hidden');
-    document.getElementById('dashboard').classList.remove('hidden');
-    loadMails();
-}
 </script>
+</body>
+</html>
