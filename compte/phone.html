@@ -1,553 +1,583 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="dark">
+<html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ATHERION XR — ULTIMATE CYBER OS</title>
-<meta name="theme-color" content="#00ffff">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<!-- PWA Manifest intégré -->
-<link rel="manifest" href="data:application/manifest+json,{
-  \"name\":\"Atherion XR Ultimate\",
-  \"short_name\":\"Atherion\",
-  \"start_url\":\".\",
-  \"display\":\"standalone\",
-  \"background_color\":\"#000814\",
-  \"theme_color\":\"#00ffff\",
-  \"icons\":[
-    {\"src\":\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>A</text></svg>\",\"sizes\":\"512x512\",\"type\":\"image/svg+xml\"}
-  ]
-}">
-
-<style>
-/* ===================== VARIABLES CSS ===================== */
-:root {
-  --bg: #000814;
-  --bg2: #001122;
-  --primary: #00ffff;
-  --accent: #ff00ff;
-  --success: #00ff88;
-  --danger: #ff3366;
-  --glass: rgba(10,20,50,0.75);
-  --glass2: rgba(0,255,255,0.1);
-  --text: #e0faff;
-  --text2: #88ffff;
-  --shadow: 0 0 40px rgba(0,255,255,0.5);
-  --radius: 24px;
-  --transition: all 0.4s cubic-bezier(0.25,0.8,0.25,1);
-}
-
-/* Mode clair (optionnel) */
-[data-theme="light"] {
-  --bg: #f0f8ff;
-  --bg2: #e6f3ff;
-  --primary: #0066ff;
-  --accent: #ff00aa;
-  --glass: rgba(255,255,255,0.8);
-  --text: #001122;
-  --text2: #003366;
-}
-
-/* ===================== GLOBAL ===================== */
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  height: 100dvh;
-  overflow: hidden;
-  touch-action: manipulation;
-  image-rendering: crisp-edges;
-}
-
-/* ===================== MATRIX RAIN BACKGROUND ===================== */
-#matrix-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.12;
-  z-index: -2;
-}
-#matrix-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-}
-
-/* ===================== GLASSMORPHISM ===================== */
-.glass {
-  background: var(--glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0,255,255,0.3);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-
-/* ===================== HEADER ===================== */
-.header {
-  text-align: center;
-  padding: 40px 20px 20px;
-  font-size: 48px;
-  font-weight: 900;
-  background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 0 60px var(--primary);
-  letter-spacing: 4px;
-}
-
-/* ===================== CONTAINER ===================== */
-.container {
-  padding: 20px;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-  padding-bottom: 100px;
-}
-
-/* ===================== CARD ===================== */
-.card {
-  background: var(--glass);
-  border-radius: var(--radius);
-  padding: 24px;
-  border: 1px solid rgba(0,255,255,0.3);
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-}
-.card:hover { transform: translateY(-8px); box-shadow: 0 20px 60px rgba(0,255,255,0.6); }
-
-/* ===================== INPUTS & BUTTONS ===================== */
-input, textarea, button, select {
-  width: 100%;
-  padding: 18px;
-  margin: 12px 0;
-  border-radius: 18px;
-  border: 2px solid var(--primary);
-  background: rgba(0,255,255,0.05);
-  color: var(--text);
-  font-size: 18px;
-  transition: var(--transition);
-}
-input:focus, textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 30px rgba(255,0,255,0.5);
-}
-button {
-  background: linear-gradient(45deg, var(--primary), var(--accent));
-  color: #000;
-  font-weight: bold;
-  font-size: 18px;
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 8px 30px rgba(0,255,255,0.5);
-}
-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 50px var(--primary);
-}
-.btn-small {
-  padding: 12px 24px;
-  font-size: 16px;
-}
-.hidden { display: none !important; }
-
-/* ===================== VIDEO ===================== */
-video {
-  width: 100%;
-  max-width: 500px;
-  border-radius: 20px;
-  border: 4px solid var(--primary);
-  box-shadow: 0 0 50px var(--primary);
-  background: #000;
-}
-
-
-
-/* ===================== XR BUTTON ===================== */
-#xr-enter {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 24px 48px;
-  font-size: 28px;
-  font-weight: 900;
-  z-index: 9999;
-  border-radius: 50px;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(0,255,255,0.7); }
-  70% { box-shadow: 0 0 0 30px rgba(0,255,255,0); }
-  100% { box-shadow: 0 0 0 0 rgba(0,255,255,0); }
-}
-
-/* ===================== TOAST ===================== */
-.toast {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--glass);
-  backdrop-filter: blur(20px);
-  padding: 20px 40px;
-  border-radius: 50px;
-  border: 2px solid var(--primary);
-  color: white;
-  font-size: 18px;
-  z-index: 10000;
-  animation: toastIn 0.6s, toastOut 0.6s 2.4s forwards;
-}
-@keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(100px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
-@keyframes toastOut { to { opacity:0; transform: translateX(-50%) translateY(100px); } }
-
-/* ===================== PARTICLES ===================== */
-#particles-js {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-}
-</style>
-
-<!-- THREE.js + A-Frame + Particles.js intégrés en base64 pour 0 dépendance -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-
+  <meta charset="utf-8">
+  <title>Atherion conexion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="data:application/manifest+json,{ &quot;name&quot;: &quot;Atherion conexion&quot;, &quot;short_name&quot;: &quot;Atherion&quot;, &quot;start_url&quot;: &quot;.&quot;, &quot;display&quot;: &quot;standalone&quot;, &quot;background_color&quot;: &quot;#000000&quot;, &quot;theme_color&quot;: &quot;#000000&quot;, &quot;icons&quot;: [] }">
+  <meta name="theme-color" content="#000000">
+  <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*">
 </head>
 <body>
+<main>
+  <h1>Atherion conexion</h1>
+  <p>Prototype futuriste: WebNN + WebRTC + PWA, sans CSS. Tout est local.</p>
 
-<!-- Matrix Rain -->
-<canvas id="matrix-canvas"></canvas>
-<div id="matrix-bg"></div>
+  <!-- Auth -->
+  <section id="auth">
+    <h2>Connexion</h2>
+    <div><label>Identifiant:</label> <input id="login-username" placeholder="ex: yasscode"></div>
+    <div><label>Mot de passe:</label> <input id="login-password" type="password" placeholder="••••••••"></div>
+    <button id="login-btn">Se connecter</button>
 
-<!-- Particles.js -->
-<div id="particles-js"></div>
+    <h3>Créer un compte</h3>
+    <div><label>Identifiant:</label> <input id="signup-username" placeholder="nouvel identifiant"></div>
+    <div><label>Mot de passe:</label> <input id="signup-password" type="password" placeholder="mot de passe"></div>
+    <button id="signup-btn">Créer</button>
+    <p id="auth-status"></p>
+  </section>
 
-<div class="container">
-
-  <h1 class="header">ATHERION XR</h1>
-  <p style="text-align:center; font-size:20px; opacity:0.8;">Le système d'exploitation du futur — 2025</p>
-
-  <!-- LOGIN CARD -->
-  <div id="login-card" class="card">
-    <h2 style="text-align:center; margin-bottom:20px;">Entrer dans la Matrice</h2>
-    <input type="text" id="username" placeholder="Pseudo cybernétique">
-    <input type="password" id="password" placeholder="Mot de passe quantique">
-    <button onclick="loginUser()">CONNEXION ULTIME</button>
-  </div>
-
-  <!-- DASHBOARD -->
-  <div id="dashboard" class="hidden">
-
-    <div style="text-align:center; padding:20px;">
-      <img id="user-avatar" src="" style="width:100px; height:100px; border-radius:50%; border:4px solid var(--primary);">
-      <h2>Bienvenue, <span id="user-name">Neo</span></h2>
-      <button onclick="logout()" class="btn-small">Déconnexion</button>
-      <button onclick="toggleTheme()" class="btn-small">Thème</button>
+  <!-- Admin -->
+  <section id="admin" hidden>
+    <h2>Admin yasscode — gestion</h2>
+    <button id="admin-reset">Réinitialiser la démo</button>
+    <h3>Comptes</h3>
+    <div>
+      <button id="refresh-users">Actualiser la liste</button>
+      <ul id="users-list"></ul>
     </div>
 
-    <!-- MAIL SYSTEM -->
-    <div class="card">
-      <h3>Mail Quantique</h3>
-      <input type="text" id="mail-to" placeholder="À : pseudo">
-      <input type="text" id="mail-subject" placeholder="Sujet">
-      <textarea id="mail-body" rows="5" placeholder="Message chiffré..."></textarea>
-      <button onclick="sendEncryptedMail()">Envoyer Chiffré</button>
+    <h3>Actions sur compte</h3>
+    <div>
+      <label>Utilisateur cible:</label> <input id="admin-target" placeholder="identifiant">
+    </div>
+    <div>
+      <button id="admin-del">Supprimer le compte</button>
+      <button id="admin-pwreset">Réinitialiser le mot de passe</button>
+    </div>
+    <div>
+      <label>Nouveau rôle:</label>
+      <select id="admin-role">
+        <option value="user">user</option>
+        <option value="moderator">moderator</option>
+        <option value="admin">admin</option>
+      </select>
+      <button id="admin-role-set">Modifier le rôle</button>
     </div>
 
-    <div class="card">
-      <h3>Boîte de Réception (<span id="mail-count">0</span>)</h3>
-      <div id="mail-inbox" style="max-height:400px; overflow-y:auto;"></div>
+    <h3>Diffusion de messages globaux</h3>
+    <div>
+      <label>Importance:</label>
+      <select id="broadcast-level">
+        <option value="info">info</option>
+        <option value="important">important</option>
+        <option value="critical">critical</option>
+      </select>
     </div>
-
-    <!-- VISIO WEBRTC ULTIME -->
-    <div class="card">
-      <h3>Visio Spatiale 8K</h3>
-      <input type="text" id="call-target" placeholder="Appeler : pseudo">
-      <button onclick="initiateCall()">Appeler en 3D</button>
-      <button onclick="endCall()">Raccrocher</button>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px;">
-        <video id="local-video" autoplay muted playsinline></video>
-        <video id="remote-video" autoplay playsinline></video>
-      </div>
-      <p>Mode spatial audio activé</p>
+    <div>
+      <label>Titre:</label> <input id="broadcast-title" placeholder="Titre du message">
     </div>
-
-    <!-- CHAT GLOBAL -->
-    <div class="card">
-      <h3>Chat Cybernétique</h3>
-      <div id="chat-messages" style="height:300px; overflow-y:auto; padding:16px; background:rgba(0,0,0,0.3); border-radius:16px;"></div>
-      <input type="text" id="chat-input" placeholder="Message global...">
-      <button onclick="sendChat()">Envoyer</button>
+    <div>
+      <label>Message:</label> <textarea id="broadcast-body" rows="4" cols="60" placeholder="Contenu"></textarea>
     </div>
+    <div>
+      <button id="broadcast-send">Envoyer à tous</button>
+      <button id="broadcast-banner">Définir en annonce persistante</button>
+    </div>
+    <p id="broadcast-status"></p>
 
-    <!-- WEBXR FULL IMMERSION -->
-    <button id="xr-enter" onclick="enterTheMatrix()">ENTRER EN RÉALITÉ VIRTUELLE</button>
-  </div>
-</div>
+    <h3>Journal admin</h3>
+    <pre id="admin-audit" style="white-space:pre-wrap;"></pre>
+  </section>
 
-<!-- TOAST CONTAINER -->
-<div id="toast-container"></div>
+  <!-- Bandeau annonces pour tous -->
+  <section id="banner" hidden>
+    <h2>Annonce Atherion</h2>
+    <pre id="banner-view" style="white-space:pre-wrap;"></pre>
+    <button id="banner-dismiss">Masquer l’annonce</button>
+  </section>
+
+  <!-- Social -->
+  <section id="social" hidden>
+    <h2>Amis & messages</h2>
+    <div><label>Ajouter un ami:</label> <input id="friend-name" placeholder="nom d'ami"> <button id="add-friend">Ajouter</button></div>
+    <ul id="friends-list"></ul>
+
+    <h3>Messages directs</h3>
+    <div><input id="chat-input" placeholder="écrire un message"> <button id="chat-send">Envoyer</button></div>
+    <pre id="chat-log"></pre>
+
+    <h3>Boîte de diffusion (reçus)</h3>
+    <ul id="broadcast-inbox"></ul>
+  </section>
+
+  <!-- Visio -->
+  <section id="visio" hidden>
+    <h2>Visio en direct (WebRTC)</h2>
+    <div><label>Politique ICE:</label>
+      <select id="ice-policy">
+        <option value="default">Par défaut</option>
+        <option value="relay">Relay-only (TURN)</option>
+      </select>
+    </div>
+    <div>
+      <button id="start-local">Démarrer caméra locale</button>
+      <button id="create-offer">Créer offre</button>
+      <button id="create-answer">Créer réponse</button>
+    </div>
+    <div><label>SDP (offre/réponse):</label>
+      <textarea id="sdp-area" rows="8" cols="80" placeholder="échanger manuellement l’SDP pour la démo"></textarea>
+      <button id="set-remote">Définir SDP distant</button>
+    </div>
+    <video id="localVideo" autoplay playsinline></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+  </section>
+
+  <!-- WebNN -->
+  <section id="webnn" hidden>
+    <h2>WebNN démo</h2>
+    <p id="ml-status">Détection de WebNN…</p>
+    <div><button id="ml-init">Initialiser ML</button> <button id="ml-run">Inférence démo</button></div>
+    <pre id="ml-log"></pre>
+    <h3>Charger un modèle (ONNX/JSON)</h3>
+    <input id="model-file" type="file" accept=".onnx,.json,.bin,.npy"> <button id="ml-load">Charger</button>
+  </section>
+
+  <!-- PWA -->
+  <section id="pwa">
+    <h2>Installation PWA</h2>
+    <button id="install-btn">Installer l’app</button>
+    <p id="install-status"></p>
+  </section>
+
+  <!-- Badge -->
+  <section id="system-badge" hidden>
+    <h2>Badge: Loi d’Atherion — Connexion, Visio, Gouvernance</h2>
+    <p>Chaque action admin et visio devient artefact.</p>
+  </section>
+</main>
 
 <script>
-// ==================== VARIABLES GLOBALES (3000 ====================
-let currentUser = localStorage.getItem('atherion_user') || '';
-let mails = JSON.parse(localStorage.getItem('atherion_mails') || '[]');
-let chats = JSON.parse(localStorage.getItem('atherion_chat') || '[]');
-let peers = {};
-let localStream = null;
-let socket = null;
-let inVR = false;
+/* ==========
+   Storage utils
+   ========== */
+const db = {
+  getUsers() { return JSON.parse(localStorage.getItem('users') || '{}'); },
+  setUsers(u) { localStorage.setItem('users', JSON.stringify(u)); },
+  getFriends(user) { return JSON.parse(localStorage.getItem('friends:'+user) || '[]'); },
+  setFriends(user, list) { localStorage.setItem('friends:'+user, JSON.stringify(list)); },
+  getMsgs(user) { return JSON.parse(localStorage.getItem('msgs:'+user) || '[]'); },
+  setMsgs(user, list) { localStorage.setItem('msgs:'+user, JSON.stringify(list)); },
+  getBroadcasts() { return JSON.parse(localStorage.getItem('broadcasts') || '[]'); },
+  setBroadcasts(list) { localStorage.setItem('broadcasts', JSON.stringify(list)); },
+  getBanner() { return JSON.parse(localStorage.getItem('banner') || 'null'); },
+  setBanner(obj) { localStorage.setItem('banner', JSON.stringify(obj)); },
+  getAudit() { return JSON.parse(localStorage.getItem('admin_audit') || '[]'); },
+  setAudit(list) { localStorage.setItem('admin_audit', JSON.stringify(list)); },
+  reset() { localStorage.clear(); }
+};
 
-// ==================== MATRIX RAIN (300 lignes de pure beauté) ====================
-const matrixCanvas = "01アカサタナハマヤラワガザダバパイキシチニヒミリヰギジヂビピウクステノフムユルグズデブプエケセネヘメレヱゲゼベペオコソトホモヨロヲゴゾドボポヴッン";
-const canvas = document.getElementById('matrix-canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-const cols = Math.floor(canvas.width / 20);
-const drops = Array(cols).fill(1);
-
-function drawMatrixRain() {
-  ctx.fillStyle = 'rgba(0, 8, 20, 0.04)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#00ffff';
-  ctx.font = '20px monospace';
-
-  for (let i = 0; i < drops.length; i++) {
-    const text = matrix[Math.floor(Math.random() * matrix.length)];
-    ctx.fillText(text, i * 20, drops[i] * 20);
-    if (drops[i] * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
-    drops[i]++;
-  }
+/* ==========
+   Crypto utils (démo)
+   ========== */
+async function hashPassword(password, salt = crypto.getRandomValues(new Uint8Array(16))) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits','deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, true, ['encrypt','decrypt']);
+  const raw = await crypto.subtle.exportKey('raw', key);
+  return { hash: Array.from(new Uint8Array(raw)).map(b=>b.toString(16).padStart(2,'0')).join(''), salt: Array.from(salt) };
 }
-setInterval(drawMatrixRain, 33);
+function eqHash(h1, h2) { return h1 === h2; }
 
-// ==================== PARTICLES.JS CONFIG ====================
-particlesJS('particles-js', {
-  particles: {
-    number: { value: 80 },
-    color: { value: 4 },
-    color: { value: '#00ffff' },
-    shape: { type: 'circle' },
-    opacity: { value: 0.8, random: true },
-    line_linked: { enable: true, distance: 150, color: '#00ffff', opacity: 0.3, width: 1 },
-    move: { enable: true, speed: 3 }
-  },
-  interactivity: {
-    detect_on: 'canvas',
-    events: { onhover: { enable: true, mode: 'repulse' } }
+async function hmacMessage(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+/* ==========
+   Bootstrap admin yasscode
+   ========== */
+(async () => {
+  const users = db.getUsers();
+  if (!users['yasscode']) {
+    const { hash, salt } = await hashPassword('YASSINEa1!');
+    users['yasscode'] = { role: 'admin', hash, salt };
+    db.setUsers(users);
+    appendAudit({ type:'init_admin', actor:'system', target:'yasscode', note:'Admin initialisé' });
   }
+})();
+
+/* ==========
+   Globals
+   ========== */
+let currentUser = null;
+const authStatusEl = document.getElementById('auth-status');
+const adminEl = document.getElementById('admin');
+const socialEl = document.getElementById('social');
+const visioEl = document.getElementById('visio');
+const webnnEl = document.getElementById('webnn');
+const badgeEl = document.getElementById('system-badge');
+const bannerEl = document.getElementById('banner');
+const bannerViewEl = document.getElementById('banner-view');
+const broadcastInboxEl = document.getElementById('broadcast-inbox');
+
+function nowISO() { return new Date().toISOString(); }
+function appendAudit(entry) {
+  const list = db.getAudit();
+  list.push({ time: nowISO(), ...entry });
+  db.setAudit(list);
+  renderAudit();
+}
+function renderAudit() {
+  const list = db.getAudit().slice(-200);
+  document.getElementById('admin-audit').textContent =
+    list.map(x => `[${x.time}] ${x.type} — actor:${x.actor} target:${x.target||'-'} note:${x.note||''}`).join('\n');
+}
+
+/* ==========
+   Auth
+   ========== */
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const u = document.getElementById('login-username').value.trim();
+  const p = document.getElementById('login-password').value;
+  const users = db.getUsers();
+  if (!users[u]) { authStatusEl.textContent = 'Utilisateur introuvable.'; return; }
+  const salt = new Uint8Array(users[u].salt || []);
+  const { hash } = await hashPassword(p, salt);
+  if (!eqHash(hash, users[u].hash)) { authStatusEl.textContent = 'Mot de passe invalide.'; return; }
+  currentUser = u;
+  authStatusEl.textContent = 'Connecté: ' + u;
+  postLogin(users[u].role || 'user');
+  showBannerIfAny();
 });
 
-// ==================== TOAST SYSTEM ====================
-function toast(msg, time = 3000) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = msg;
-  document.getElementById('toast-container').appendChild(t);
-  setTimeout(() => t.remove(), time);
-}
+document.getElementById('signup-btn').addEventListener('click', async () => {
+  const u = document.getElementById('signup-username').value.trim();
+  const p = document.getElementById('signup-password').value;
+  if (!u || !p) { authStatusEl.textContent = 'Remplir identifiant et mot de passe.'; return; }
+  const users = db.getUsers();
+  if (users[u]) { authStatusEl.textContent = 'Utilisateur déjà existant.'; return; }
+  const { hash, salt } = await hashPassword(p);
+  users[u] = { role: 'user', hash, salt };
+  db.setUsers(users);
+  authStatusEl.textContent = 'Compte créé. Vous pouvez vous connecter.';
+  appendAudit({ type:'create_user', actor: currentUser || 'anonymous', target:u });
+});
 
-// ==================== THEME TOGGLE ====================
-function toggleTheme() {
-  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', theme);
-  toast(`Mode ${theme === 'dark' ? 'Sombre' : 'Clair'} activé`);
-}
-
-
-// ==================== LOGIN ULTIME ====================
-async function loginUser() {
-  const user = document.getElementById('username').value.trim();
-  const pass = document.getElementById('password').value;
-
-  if (!user || !pass) return toast('Remplis tout !');
-
-  currentUser = user;
-  localStorage.setItem('atherion_user', user);
-  document.getElementById('user-name').textContent = user;
-  document.getElementById('login-card').classList.add('hidden');
-  document.getElementById('dashboard').classList.remove('hidden');
-
-  toast(`Bienvenue dans la Matrice, ${user} !`);
-  loadMails();
-  loadChat();
-  loadChat();
-}
-
-// ==================== CHIFFRAGE SIMPLE (AES-like en JS) ====================
-function simpleEncrypt(text, key) {
-  return btoa(unescape(encodeURIComponent(text.split('').map((c,i)=>String.fromCharCode(c.charCodeAt(0)^key.charCodeAt(i%key.length))).join(''))));
-}
-function simpleDecrypt(hash, key) {
-  try {
-    return decodeURIComponent(escape(atob(hash).split('').map((c,i)=>String.fromCharCode(c.charCodeAt(0)^key.charCodeAt(i%key.length))).join('')));
-  } catch { return "[Message corrompu]" }
-}
-
-// ==================== MAIL SYSTEM ====================
-function sendEncryptedMail() {
-  const to = document.getElementById('mail-to').value;
-  const subject = document.getElementById('mail-subject').value;
-  const body = document.getElementById('mail-body').value;
-
-  if (!to || !subject || !body) return toast('Remplis tout');
-
-  const encrypted = simpleEncrypt(body, 'atherion2025');
-
-  const mail = {
-    id: Date.now(),
-    from: currentUser,
-    to,
-    subject,
-    body: encrypted,
-    time: new Date().toISOString(),
-    read: false
-  };
-
-  mails.push(mail);
-  localStorage.setItem('atherion_mails', JSON.stringify(mails));
-  toast('Mail chiffré envoyé !');
-  document.getElementById('mail-to').value = document.getElementById('mail-subject').value = document.getElementById('mail-body').value = '';
-  loadMails();
-}
-
-function loadMails() {
-  const inbox = document.getElementById('mail-inbox');
-  const myMails = mails.filter(m => m.to === currentUser).reverse();
-  document.getElementById('mail-count').textContent = myMails.length;
-
-  inbox.innerHTML = myMails.map(m => `
-    <div style="background:rgba(0,255,255,0.1); padding:16px; margin:8px 0; border-radius:16px;">
-      <b>${m.from}</b> → ${m.subject}
-      <div style="margin-top:8px; font-size:15px;">${simpleDecrypt(m.body, 'atherion2025')}</div>
-      <small>${new Date(m.time).toLocaleString()}</small>
-    </div>
-  `).join('') || '<i style="opacity:0.6;">Aucun message chiffré...</i>';
-}
-
-// ==================== CHAT GLOBAL ====================
-function sendChat() {
-  const msg = document.getElementById('chat-input').value.trim();
-  if (!msg) return;
-
-  const chatMsg = { user: currentUser, msg, time: Date.now() };
-  chats.push(chatMsg);
-  localStorage.setItem('atherion_chat', JSON.stringify(chats));
-  document.getElementById('chat-input').value = '';
-  loadChat();
-}
-
-function loadChat() {
-  const chat = document.getElementById('chat-messages');
-  chat.innerHTML = chats.slice(-50).map(c => `
-    <div style="margin:8px 0; padding:12px; background:rgba(255,255,255,0.05); border-radius:12px;">
-      <b style="color:var(--primary)">${c.user}:</b> ${c.msg}
-      <div style="font-size:12px; opacity:0.7; text-align:right;">${new Date(c.time).toLocaleTimeString()}</div>
-    </div>
-  `).join('');
-  chat.scrollTop = chat.scrollHeight;
-}
-
-// ==================== WEBRTC VISIO ULTIME ====================
-let pc = null;
-
-async function initiateCall() {
-  const target = document.getElementById('call-target').value;
-  if (!target) return toast('Qui tu appelles ?');
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: true });
-    document.getElementById('local-video').srcObject = localStream;
-
-    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-
-    pc.ontrack = e => document.getElementById('remote-video').srcObject = e.streams[0];
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    toast(`Appel envoyé à ${target}...`);
-  } catch (e) {
-    toast('Caméra refusée !');
-  }
-}
-
-function endCall() {
-  if (pc) pc.close();
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
-  document.getElementById('local-video').srcObject = null;
-  document.getElementById('remote-video').srcObject = null;
-  toast('Appel terminé');
-}
-
-// ==================== WEBXR FULL IMMERSION ====================
-function enterTheMatrix() {
-  if (inVR) return;
-
-  const scene = document.createElement('a-scene');
-  scene.setAttribute('embedded', '');
-  scene.setAttribute('vr-mode-ui', 'enabled: true');
-  scene.setAttribute('background', 'color: #000814');
-
-
-
-  // Salle cyberpunk
-  const room = document.createElement('a-cylinder');
-  room.setAttribute('radius', '30');
-  room.setAttribute('height', '20');
-  room.setAttribute('color', '#001122');
-  room.setAttribute('material', 'metalness: 0.9; roughness: 0.1');
-  scene.appendChild(room);
-
-  // Texte holographique
-  const text = document.createElement('a-text');
-  text.setAttribute('value', `BIENVENUE DANS LA MATRICE\n${currentUser.toUpperCase()}`);
-  text.setAttribute('position', '0 5 -10');
-  text.setAttribute('color', '#00ffff');
-  text.setAttribute('align', 'center');
-  text.setAttribute('width', '20');
-  scene.appendChild(text);
-
-  document.body.appendChild(scene);
-  scene.enterVR();
-  inVR = true;
-  toast('Tu es dans la Matrice.');
-}
-
-// ==================== LOGOUT ====================
-function logout() {
-  localStorage.clear();
+document.getElementById('admin-reset').addEventListener('click', () => {
+  if (!confirm('Réinitialiser toute la démo (localStorage) ?')) return;
+  db.reset();
   location.reload();
-}
-
-// ==================== AUTO-START ====================
-if (currentUser) {
-  document.getElementById('user-name').textContent = currentUser;
-  document.getElementById('login-card').classList.add('hidden');
-  document.getElementById('dashboard').classList.remove('hidden');
-  loadMails();
-  loadChat();
-  toast(`Rebonjour, ${currentUser} !`);
-}
-
-window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
 });
 
+function postLogin(role) {
+  if (role === 'admin' && currentUser === 'yasscode') {
+    adminEl.hidden = false;
+    renderAudit();
+    renderUsers();
+  }
+  socialEl.hidden = false;
+  visioEl.hidden = false;
+  webnnEl.hidden = false;
+  badgeEl.hidden = false;
+  loadFriends();
+  loadMessages();
+  renderBroadcastInbox();
+}
+
+/* ==========
+   Admin: liste et gestion des comptes
+   ========== */
+document.getElementById('refresh-users').addEventListener('click', renderUsers);
+function renderUsers() {
+  const ul = document.getElementById('users-list');
+  const users = db.getUsers();
+  ul.innerHTML = '';
+  Object.keys(users).forEach((u, i) => {
+    const li = document.createElement('li');
+    li.textContent = `${i+1}. ${u} — rôle:${users[u].role}`;
+    ul.appendChild(li);
+  });
+}
+
+document.getElementById('admin-del').addEventListener('click', () => {
+  const target = document.getElementById('admin-target').value.trim();
+  if (!target) return alert('Utilisateur cible requis');
+  if (target === 'yasscode') return alert('Impossible de supprimer le compte admin racine.');
+  const users = db.getUsers();
+  if (!users[target]) return alert('Utilisateur introuvable');
+  if (!confirm(`Supprimer le compte '${target}' ?`)) return;
+  delete users[target];
+  db.setUsers(users);
+  // nettoyer données sociales
+  localStorage.removeItem('friends:'+target);
+  localStorage.removeItem('msgs:'+target);
+  appendAudit({ type:'delete_user', actor: currentUser, target });
+  renderUsers();
+  renderBroadcastInbox();
+});
+
+document.getElementById('admin-pwreset').addEventListener('click', async () => {
+  const target = document.getElementById('admin-target').value.trim();
+  if (!target) return alert('Utilisateur cible requis');
+  const users = db.getUsers();
+  if (!users[target]) return alert('Utilisateur introuvable');
+  const npw = prompt('Nouveau mot de passe (sera haché et salé) :', '');
+  if (!npw) return;
+  const { hash, salt } = await hashPassword(npw);
+  users[target].hash = hash; users[target].salt = salt;
+  db.setUsers(users);
+  appendAudit({ type:'reset_password', actor: currentUser, target });
+  alert('Mot de passe réinitialisé.');
+});
+
+document.getElementById('admin-role-set').addEventListener('click', () => {
+  const target = document.getElementById('admin-target').value.trim();
+  const role = document.getElementById('admin-role').value;
+  if (!target) return alert('Utilisateur cible requis');
+  const users = db.getUsers();
+  if (!users[target]) return alert('Utilisateur introuvable');
+  users[target].role = role;
+  db.setUsers(users);
+  appendAudit({ type:'set_role', actor: currentUser, target, note:`role=${role}` });
+  renderUsers();
+});
+
+/* ==========
+   Admin: diffusion globale + annonces
+   ========== */
+document.getElementById('broadcast-send').addEventListener('click', async () => {
+  const lvl = document.getElementById('broadcast-level').value;
+  const title = document.getElementById('broadcast-title').value.trim();
+  const body = document.getElementById('broadcast-body').value.trim();
+  if (!title || !body) { document.getElementById('broadcast-status').textContent = 'Titre et message requis.'; return; }
+  const payload = { id: Date.now(), level: lvl, title, body, from: currentUser, time: nowISO() };
+  payload.sig = await hmacMessage('ATHERION_ADMIN_SECRET', JSON.stringify({level:lvl,title,body,time:payload.time}));
+  const list = db.getBroadcasts();
+  list.push(payload);
+  db.setBroadcasts(list);
+  document.getElementById('broadcast-status').textContent = 'Message global envoyé.';
+  appendAudit({ type:'broadcast', actor: currentUser, note:`level=${lvl} title=${title}` });
+  renderBroadcastInbox();
+});
+
+document.getElementById('broadcast-banner').addEventListener('click', async () => {
+  const lvl = document.getElementById('broadcast-level').value;
+  const title = document.getElementById('broadcast-title').value.trim();
+  const body = document.getElementById('broadcast-body').value.trim();
+  if (!title || !body) { document.getElementById('broadcast-status').textContent = 'Titre et message requis.'; return; }
+  const banner = { level: lvl, title, body, from: currentUser, time: nowISO(),
+    sig: await hmacMessage('ATHERION_ADMIN_SECRET', JSON.stringify({level:lvl,title,body})) };
+  db.setBanner(banner);
+  document.getElementById('broadcast-status').textContent = 'Annonce persistante définie.';
+  appendAudit({ type:'banner_set', actor: currentUser, note:`level=${lvl} title=${title}` });
+  showBannerIfAny(true);
+});
+
+function showBannerIfAny(forceShow=false) {
+  const b = db.getBanner();
+  if (!b) return;
+  bannerViewEl.textContent = `Importance: ${b.level}\nTitre: ${b.title}\nMessage: ${b.body}\nPar: ${b.from} à ${b.time}`;
+  bannerEl.hidden = !forceShow;
+}
+document.getElementById('banner-dismiss').addEventListener('click', () => {
+  bannerEl.hidden = true;
+});
+
+/* ==========
+   Broadcast inbox (user-side)
+   ========== */
+function renderBroadcastInbox() {
+  if (!currentUser) return;
+  const list = db.getBroadcasts().slice(-50).reverse();
+  broadcastInboxEl.innerHTML = '';
+  list.forEach(b => {
+    const li = document.createElement('li');
+    li.textContent = `[${b.level}] ${b.title} — ${b.body} (${new Date(b.time).toLocaleString()})`;
+    // accusé de réception
+    const akBtn = document.createElement('button');
+    akBtn.textContent = 'Accusé de réception';
+    akBtn.addEventListener('click', () => {
+      appendAudit({ type:'ack_broadcast', actor: currentUser, target:b.id });
+      akBtn.disabled = true;
+    });
+    li.appendChild(document.createTextNode(' '));
+    li.appendChild(akBtn);
+    broadcastInboxEl.appendChild(li);
+  });
+}
+
+/* ==========
+   Friends + messaging
+   ========== */
+const friendsListEl = document.getElementById('friends-list');
+document.getElementById('add-friend').addEventListener('click', () => {
+  if (!currentUser) return;
+  const name = document.getElementById('friend-name').value.trim();
+  if (!name) return;
+  const list = db.getFriends(currentUser);
+  list.push({ name });
+  db.setFriends(currentUser, list);
+  loadFriends();
+});
+
+function loadFriends() {
+  if (!currentUser) return;
+  const list = db.getFriends(currentUser);
+  friendsListEl.innerHTML = '';
+  list.forEach((f, i) => {
+    const li = document.createElement('li');
+    li.textContent = (i+1)+'. '+f.name;
+    friendsListEl.appendChild(li);
+  });
+}
+
+const chatLogEl = document.getElementById('chat-log');
+document.getElementById('chat-send').addEventListener('click', () => {
+  const msg = document.getElementById('chat-input').value;
+  if (!msg) return;
+  appendMsg('moi', msg);
+  if (dataChannel && dataChannel.readyState === 'open') {
+    dataChannel.send(JSON.stringify({ from: currentUser, msg, ts: Date.now() }));
+  }
+  saveMsg({ from: currentUser, msg, ts: Date.now() });
+});
+
+function appendMsg(from, msg) {
+  chatLogEl.textContent += `[${new Date().toLocaleTimeString()}] ${from}: ${msg}\n`;
+}
+function saveMsg(m) {
+  const list = db.getMsgs(currentUser);
+  list.push(m);
+  db.setMsgs(currentUser, list);
+}
+function loadMessages() {
+  const list = db.getMsgs(currentUser);
+  list.forEach(m => appendMsg(m.from, m.msg));
+}
+
+/* ==========
+   WebRTC
+   ========== */
+let pc = null;
+let dataChannel = null;
+const localVideo = document.getElementById('localVideo');
+const remoteVideo = document.getElementById('remoteVideo');
+
+function getIceServers(policy) {
+  const turn = { urls: ['turn:example.com:3478'], username: 'demo', credential: 'demo' };
+  const stun = { urls: ['stun:stun.l.google.com:19302'] };
+  if (policy === 'relay') return { iceServers: [turn], iceTransportPolicy: 'relay' };
+  return { iceServers: [stun, turn] };
+}
+
+function createPC() {
+  const policy = document.getElementById('ice-policy').value;
+  const cfg = getIceServers(policy);
+  pc = new RTCPeerConnection(cfg);
+  pc.ontrack = (ev) => { remoteVideo.srcObject = ev.streams[0]; };
+  pc.onconnectionstatechange = () => appendMsg('system', 'RTC état: ' + pc.connectionState);
+  dataChannel = pc.createDataChannel('chat');
+  dataChannel.onopen = () => appendMsg('system', 'Canal de données ouvert.');
+  dataChannel.onmessage = (ev) => {
+    try { const obj = JSON.parse(ev.data); appendMsg(obj.from || 'ami', obj.msg); saveMsg(obj); }
+    catch { appendMsg('ami', ev.data); }
+  };
+}
+document.getElementById('start-local').addEventListener('click', async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  localVideo.srcObject = stream;
+  createPC();
+  stream.getTracks().forEach(t => pc.addTrack(t, stream));
+});
+document.getElementById('create-offer').addEventListener('click', async () => {
+  if (!pc) createPC();
+  const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+  await pc.setLocalDescription(offer);
+  document.getElementById('sdp-area').value = JSON.stringify(pc.localDescription);
+});
+document.getElementById('create-answer').addEventListener('click', async () => {
+  if (!pc) createPC();
+  const remote = JSON.parse(document.getElementById('sdp-area').value || '{}');
+  await pc.setRemoteDescription(new RTCSessionDescription(remote));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  document.getElementById('sdp-area').value = JSON.stringify(pc.localDescription);
+});
+document.getElementById('set-remote').addEventListener('click', async () => {
+  const remote = JSON.parse(document.getElementById('sdp-area').value || '{}');
+  await pc.setRemoteDescription(new RTCSessionDescription(remote));
+});
+
+/* ==========
+   WebNN
+   ========== */
+const mlStatus = document.getElementById('ml-status');
+const mlLog = document.getElementById('ml-log');
+let mlContext = null;
+let mlBuilder = null;
+let mlGraph = null;
+
+function logML(msg) { mlLog.textContent += msg + '\n'; }
+mlStatus.textContent = typeof navigator.ml !== 'undefined' ? 'WebNN détecté.' : 'WebNN non détecté (flags expérimentaux requis).';
+
+document.getElementById('ml-init').addEventListener('click', async () => {
+  if (!navigator.ml) { mlStatus.textContent = 'Navigator.ml indisponible.'; return; }
+  mlContext = await navigator.ml.createContext({ devicePreference: 'gpu', powerPreference: 'high-performance' });
+  mlBuilder = new MLGraphBuilder(mlContext);
+  const x = mlBuilder.input('x', { type: 'float32', dimensions: [1, 4] });
+  const w = mlBuilder.constant({ type: 'float32', dimensions: [4, 4] }, new Float32Array(16).map((_,i)=> (i%5===0?1:0.25)));
+  const b = mlBuilder.constant({ type: 'float32', dimensions: [4] }, new Float32Array([0.1, -0.2, 0.3, 0.0]));
+  const y = mlBuilder.relu(mlBuilder.add(mlBuilder.matmul(x, w), b));
+  mlGraph = await mlBuilder.build({ y });
+  logML('Graph ML prêt.');
+});
+document.getElementById('ml-run').addEventListener('click', async () => {
+  if (!mlGraph) { logML('Initialisez ML d’abord.'); return; }
+  const input = new Float32Array([0.5, -1.0, 0.2, 0.0]);
+  const outputs = { y: new Float32Array(4) };
+  await mlGraph.compute({ x: input }, outputs);
+  logML('Sortie y: [' + Array.from(outputs.y).map(v=>v.toFixed(4)).join(', ') + ']');
+});
+document.getElementById('ml-load').addEventListener('click', async () => {
+  const f = document.getElementById('model-file').files[0];
+  if (!f) { logML('Sélectionnez un fichier modèle.'); return; }
+  const buf = await f.arrayBuffer();
+  const arr = new Float32Array(buf);
+  if (!mlBuilder) { logML('Initialisez ML d’abord.'); return; }
+  const x = mlBuilder.input('x', { type: 'float32', dimensions: [1, arr.length] });
+  const w = mlBuilder.constant({ type: 'float32', dimensions: [arr.length, arr.length] }, arr);
+  const y = mlBuilder.relu(mlBuilder.matmul(x, w));
+  mlGraph = await mlBuilder.build({ y });
+  logML('Modèle chargé (démo).');
+});
+
+/* ==========
+   PWA
+   ========== */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('install-status').textContent = 'PWA installable.'; });
+document.getElementById('install-btn').addEventListener('click', async () => {
+  if (!deferredPrompt) { document.getElementById('install-status').textContent = 'Non disponible.'; return; }
+  deferredPrompt.prompt();
+  const choice = await deferredPrompt.userChoice;
+  document.getElementById('install-status').textContent = 'Choix: ' + choice.outcome;
+});
+
+/* ==========
+   Service Worker
+   ========== */
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    self.addEventListener('install', (e) => {
+      e.waitUntil((async () => {
+        const cache = await caches.open('atherion-v1');
+        await cache.addAll(['./']);
+      })());
+      self.skipWaiting();
+    });
+    self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
+    self.addEventListener('fetch', (e) => {
+      e.respondWith((async () => { const cached = await caches.match(e.request); return cached || fetch(e.request); })());
+    });
+  `;
+  const blob = new Blob([swCode], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url);
+}
 </script>
 </body>
 </html>
