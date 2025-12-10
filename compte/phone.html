@@ -169,15 +169,7 @@ video {
   background: #000;
 }
 
-/* ===================== AVATAR 3D ===================== */
-#avatar-preview {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 4px solid var(--primary);
-  box-shadow: 0 0 40px var(--primary);
-  object-fit: cover;
-}
+
 
 /* ===================== XR BUTTON ===================== */
 #xr-enter {
@@ -251,9 +243,6 @@ video {
     <h2 style="text-align:center; margin-bottom:20px;">Entrer dans la Matrice</h2>
     <input type="text" id="username" placeholder="Pseudo cybernétique">
     <input type="password" id="password" placeholder="Mot de passe quantique">
-    <input type="file" id="avatar-upload" accept="image/*" style="display:none">
-    <button onclick="document.getElementById('avatar-upload').click()">Choisir Avatar 3D</button>
-    <img id="avatar-preview" src="https://api.dicebear.com/7.x/avataaars/svg?seed=neo" alt="Avatar">
     <button onclick="loginUser()">CONNEXION ULTIME</button>
   </div>
 
@@ -313,7 +302,6 @@ video {
 <script>
 // ==================== VARIABLES GLOBALES (3000 ====================
 let currentUser = localStorage.getItem('atherion_user') || '';
-let userAvatar = localStorage.getItem('atherion_avatar') || 'https://api.dicebear.com/7.x/avataaars/svg?seed=neo';
 let mails = JSON.parse(localStorage.getItem('atherion_mails') || '[]');
 let chats = JSON.parse(localStorage.getItem('atherion_chat') || '[]');
 let peers = {};
@@ -378,21 +366,6 @@ function toggleTheme() {
   toast(`Mode ${theme === 'dark' ? 'Sombre' : 'Clair'} activé`);
 }
 
-// ==================== AVATAR UPLOAD ====================
-document.getElementById('avatar-upload').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = reader.onload = ev => {
-      userAvatar = ev.target.result;
-      document.getElementById('avatar-preview').src = userAvatar;
-      document.getElementById('user-avatar').src = userAvatar;
-      localStorage.setItem('atherion_avatar', userAvatar);
-      toast('Avatar mis à jour !');
-    };
-    reader.readAsDataURL(file);
-  }
-});
 
 // ==================== LOGIN ULTIME ====================
 async function loginUser() {
@@ -403,10 +376,7 @@ async function loginUser() {
 
   currentUser = user;
   localStorage.setItem('atherion_user', user);
-  localStorage.setItem('atherion_avatar', userAvatar);
-
   document.getElementById('user-name').textContent = user;
-  document.getElementById('user-avatar').src = userAvatar;
   document.getElementById('login-card').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
 
@@ -532,20 +502,7 @@ function enterTheMatrix() {
   scene.setAttribute('vr-mode-ui', 'enabled: true');
   scene.setAttribute('background', 'color: #000814');
 
-  // Avatar joueur
-  const player = document.createElement('a-entity');
-  player.setAttribute('camera', '');
-  player.setAttribute('look-controls', '');
-  player.setAttribute('wasd-controls', 'acceleration: 30');
-  player.setAttribute('position', '0 1.6 3');
-  scene.appendChild(player);
 
-  // Avatar 3D du joueur
-  const avatar = document.createElement('a-gltf-model');
-  avatar.setAttribute('src', 'https://models.readyplayer.me/653f3f3f3f3f3f3f3f3f3f3f.glb');
-  avatar.setAttribute('position', '0 0 0');
-  avatar.setAttribute('scale', '1.5 1.5 1.5');
-  player.appendChild(avatar);
 
   // Salle cyberpunk
   const room = document.createElement('a-cylinder');
@@ -579,7 +536,6 @@ function logout() {
 // ==================== AUTO-START ====================
 if (currentUser) {
   document.getElementById('user-name').textContent = currentUser;
-  document.getElementById('user-avatar').src = userAvatar;
   document.getElementById('login-card').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
   loadMails();
